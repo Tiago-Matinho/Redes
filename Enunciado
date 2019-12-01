@@ -1,0 +1,47 @@
+Pretende-se um conjunto de aplicações que permita captar, processar e disponibilizar dados sobre a qualidade do ar numa grande cidade. A distribuição geográfica e a especificação dos equipamentos envolvidos obrigam a uma separação de funcionalidades, de leitura de parâmetros, por um lado, e de armazenamento e disponibilização para consultas intensivas e de histórico, por outro lado. Este serviço distribuído envolve quatro tipos de aplicação: 
+
+    sensor - aplicação que controla o dispositivo terminal que inclui o sensor
+
+        inicia registando-se junto do broker, enviando-lhe o seu ID, o tipo de sensor (tipo de poluente que analisa CO2, NO2), o local, e a versão de firmware
+
+        envia periodicamente (cada 10s, mas regulável) a leitura do parâmetro ao broker
+
+            id, data, valor da leitura, unidade, versão de firmware
+
+        poderá receber do broker um upgrade de firmware (que aplica apenas se é posterior ao firmware em uso), devendo gravar o ficheiro localmente
+
+    broker - é a aplicação mediadora
+
+        recebe e guarda as últimas 10 leituras de cada sensor registado
+
+        recebe consultas dos vários clientes, respondendo com a informação pedida
+
+        quando necessário, encaminha ficheiros com firmware aos sensores que precisam de atualização
+
+    public client - aplicação usada pela população da cidade. Liga-se a um broker, para:
+
+        listar locais onde existem sensores de determinado tipo
+
+        obter última leitura de um local; obter a leitura para uma data e hora (se possível)
+
+        modo publish-subscribe:
+
+            pode registar um (1 por cliente) local de interesse (todos os poluentes) 
+
+            é notificado pelo broker sempre que a leitura varia no local onde registou interesse, num canal independente das consultas anteriores, que podem continuar a fazer-se relativamente a esse ou outros locais 
+
+    admin client - aplicação usada por fabricantes de sensores. Comunica com broker para:
+
+        obter última leitura do sensor com identificador X
+
+        listar sensores registados no broker, sendo devolvido para cada sensor: o seu ID, o tipo de sensor, o local e a versão de firmware
+
+        enviar ficheiro com firmware update para sensores do tipo Y (e que o broker fará chegar aos sensores daquele tipo com versão mais antiga)
+
+        desativar o sensor com ID X, levando o broker a descartar os dados daquele sensor, bem como novos dados ou ligações do mesmo
+
+O seu trabalho é implementar as quatro aplicações, de acordo com a descrição anterior. Os aspetos em aberto podem ser resolvidos por cada grupo. Quaisquer parâmetros de configuração devem estar fora do código, sendo passados como argumento às aplicações.
+
+Os trabalhos são entregues através do upload de um ficheiro .zip no Moodle, com todos os ficheiros de código fonte e um relatório (formato PDF, com identificação dos elementos do grupo, a descrição do trabalho, das opções tomadas no desenvolvimento, e um balanço, até 3 páginas). 
+
+Os alunos podem trabalhar individualmente ou em grupos de dois elementos.
