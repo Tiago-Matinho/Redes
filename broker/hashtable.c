@@ -31,8 +31,11 @@ void sensor_node_print(struct sensor_node* sensor){
     if(sensor == NULL)
         return;
 
-    sensor_print(sensor->sensor);
+    //sensor_print(sensor->sensor);
     
+    printf("LOG:\n\n\n");
+    printf("DATE\tID\tTYPE\tVALUE\n");
+
     for(int i = 0; i < LOG_SIZE; i++)
         sensor_payload_print(sensor->log[i]);
 
@@ -40,7 +43,7 @@ void sensor_node_print(struct sensor_node* sensor){
 }
 
 
-void hash_insert(struct hashtable* table, struct sensor_node* new_node){
+bool hash_insert(struct hashtable* table, struct sensor_node* new_node){
     int key = new_node->sensor->id;
 
     if(key < 0)
@@ -53,15 +56,15 @@ void hash_insert(struct hashtable* table, struct sensor_node* new_node){
 
     while(table->array[key] != NULL){
         if(table->array[key]->sensor->id == new_node->sensor->id){
-            printf("Already saved.\n");
-            exit(1);
+            return false;
         }
 
         key++;
         key %= MAX_SIZE;
     }
 
-    table->array[key] = new_node;    
+    table->array[key] = new_node;  
+    return true;  
 }
 
 
@@ -83,6 +86,23 @@ struct sensor_node* hash_get(struct hashtable* table, int id){
     }
 
     return NULL;
+}
+
+
+void add_payload(struct hashtable* table, struct sensor_payload* payload){
+
+    if(payload == NULL)
+        return;
+
+    struct sensor_node* node = hash_get(table, payload->id);
+
+    if(node == NULL)
+        return;
+
+    for(int i = LOG_SIZE - 1; i > 0; i--)
+        node->log[i] = node->log[i - 1];
+    
+    node->log[0] = payload;
 }
 
 

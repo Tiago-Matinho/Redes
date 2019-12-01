@@ -19,10 +19,15 @@ void iniciar_sensor(int new_socket, struct hashtable* hashtable){
     struct sensor* new_s = new_sensor(id, tipo, local, versao);
     struct sensor_node* new_n = new_node(new_s);
 
-    hash_insert(hashtable, new_n);
+    bool accepeted = true;
 
-    //verificar
-    sensor_node_print(hash_get(hashtable, id));
+    if(!hash_insert(hashtable, new_n)){
+        accepeted = false;
+        send(new_socket, &accepeted, sizeof(accepeted), 0);
+    }
+
+    else
+        send(new_socket, &accepeted, sizeof(accepeted), 0);
 }
 
 void recieve_data(int new_socket,struct hashtable* hashtable){
@@ -35,13 +40,18 @@ void recieve_data(int new_socket,struct hashtable* hashtable){
     memset(tipo, '\0', MAXCHAR);
     memset(versao, '\0', MAXCHAR);
 
-    read(new_socket, id, sizeof(id));
+    read(new_socket, &id, sizeof(id));
     read(new_socket, data, MAX_SIZE);
-    read(new_socket, valor, sizeof(valor));
+    read(new_socket, &valor, sizeof(valor));
     read(new_socket, tipo, MAX_SIZE);
     read(new_socket, versao, MAX_SIZE);
     
+    struct sensor_payload* payload = new_sen_payload(id, data, valor, tipo, versao);
     
+    add_payload(hashtable, payload);
+
+    //verificar
+    sensor_node_print(hash_get(hashtable, id));
 }
 
 int main(int argc, char* argv[]){
@@ -105,8 +115,13 @@ int main(int argc, char* argv[]){
 
     iniciar_sensor(new_socket, hashtable);
 
+    bool flag = true;
+
+    while(flag){
+        recieve_data(new_socket, hashtable);
+    }
+
     printf("Disconnected.\n");
     close(server_fd);
-
 	return 0; 
 }

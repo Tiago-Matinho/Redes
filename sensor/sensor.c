@@ -25,6 +25,18 @@ void iniciar_sensor(int sockfd,
     send(sockfd, tipo, strlen(tipo), 0);
     send(sockfd, local, strlen(local), 0);
     send(sockfd, versao, strlen(versao), 0);
+
+    bool accepeted = false;
+
+    read(sockfd, &accepeted, sizeof(accepeted));
+
+    if(accepeted)
+        printf("Registado com sucesso.\n");
+
+    else{
+        printf("Erro: Sensor com mesmo ID já registado.\n");
+        exit(2);
+    }
 }
 
 //das aulas
@@ -37,10 +49,10 @@ void strdate(char *buffer, int len){
 		return;
 	}
 
-	strftime(buffer, len, "%c\n", ptm);
+	strftime(buffer, len, "%c", ptm);
 }
 
-//TODO valores random
+
 int get_new_value(){
     return rand() % 101;
 }
@@ -61,9 +73,9 @@ void send_data(int sockfd, struct sensor* this_sens){
     strcpy(versao, this_sens->versao);
     strdate(data, MAXCHAR);
 
-    send(sockfd, id, sizeof(id), 0);
+    send(sockfd, &id, sizeof(id), 0);
     send(sockfd, data, strlen(data), 0);
-    send(sockfd, valor, sizeof(valor), 0);
+    send(sockfd, &valor, sizeof(valor), 0);
     send(sockfd, tipo, strlen(tipo), 0);
     send(sockfd, versao, strlen(versao), 0);
 }
@@ -72,7 +84,7 @@ void send_data(int sockfd, struct sensor* this_sens){
 int main(int argc, char *argv[]){
     srand(time(NULL));   // Initialization, should only be called once.
 
-    //int intervalo = INTREVALO;
+    int intervalo = INTREVALO;
     int portno = PORT;
 
     if(argc < 5){
@@ -80,23 +92,16 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
-    if(argc > 8){
-        printf("Too many arguments.\n");
-        exit(1);
-    }
-
     struct sensor* this_sens = new_sensor(atoi(argv[1]), argv[2], argv[3], argv[4]);
-    //struct sensor_payload* this_payload;
 
     //retirado das aulas
     int sockfd;
     struct hostent *server = gethostbyname(HOME);
     struct sockaddr_in serv_addr;
 
-/*
 
     if(argc >= 5)
-        server = gethostbyname(atoi(argv[4]));
+        server = gethostbyname(argv[4]);
 
     if(argc >= 6)
         portno = atoi(argv[5]);
@@ -104,7 +109,7 @@ int main(int argc, char *argv[]){
     if(argc == 7)
         intervalo = atoi(argv[6]);
 
-*/
+
 
     /* Create a socket point */
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -131,23 +136,18 @@ int main(int argc, char *argv[]){
    
     printf("Connected.\n");
     
+
     iniciar_sensor(sockfd, this_sens);
     
-    //this_payload = iniciar_sensor(this_sens, sockfd);
-
-
-    /*
     bool flag = true;
-    
-    send_data(sockfd, this_sens, this_payload);
 
     while(flag){
         //novo update de firmare????
+        send_data(sockfd, this_sens);
         sleep(intervalo);
-        send_data(sockfd, this_sens, this_payload);
     }
-    */
 
+    printf("Disconnected.\n");
     close(sockfd);
     return 0;
 }

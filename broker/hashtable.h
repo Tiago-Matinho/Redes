@@ -18,7 +18,8 @@ struct sensor_node* new_node(struct sensor* sensor);
 void sensor_node_print(struct sensor_node* sensor);
 
 struct hashtable* new_hashtable();
-void hash_insert(struct hashtable* table, struct sensor_node* new_node);
+bool hash_insert(struct hashtable* table, struct sensor_node* new_node);
 struct sensor_node* hash_get(struct hashtable* table, int id);
+void add_payload(struct hashtable* table, struct sensor_payload* payload);
 
 void hash_destroy(struct hashtable* hashtable);
