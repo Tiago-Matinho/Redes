@@ -1,7 +1,7 @@
 #include "header.h"
 
-#define MAX_SIZE 101
-#define LOG_SIZE 10
+#define MAX_SIZE 101    //numero máximo de sensores
+#define LOG_SIZE 10     //mensagens de sensores guardados
 
 struct sensor_node{
     struct sensor* sensor;

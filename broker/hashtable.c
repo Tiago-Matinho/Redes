@@ -43,6 +43,7 @@ void sensor_node_print(struct sensor_node* sensor){
 }
 
 
+//usa a implementação iterativa. hash_code = ID.
 bool hash_insert(struct hashtable* table, struct sensor_node* new_node){
     int key = new_node->sensor->id;
 
@@ -99,9 +100,11 @@ void add_payload(struct hashtable* table, struct sensor_payload* payload){
     if(node == NULL)
         return;
 
+    //puxa todos os valores do array uma posição para a direita
     for(int i = LOG_SIZE - 1; i > 0; i--)
         node->log[i] = node->log[i - 1];
     
+    //guarda o mais recente
     node->log[0] = payload;
 }
 
