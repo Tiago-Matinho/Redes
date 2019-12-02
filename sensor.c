@@ -49,15 +49,15 @@ void iniciar_sensor(int sockfd,
 
 //passa a data atual para string (Retirado das aulas)
 void strdate(char *buffer, int len){
-    time_t now = time(NULL);
-    struct tm *ptm = localtime(&now);
-    
-    if (ptm == NULL) {  
-        puts("The localtime() function failed");
-        return;
-    }
+	time_t now = time(NULL);
+	struct tm *ptm = localtime(&now);
+	
+	if (ptm == NULL) {	
+		puts("The localtime() function failed");
+		return;
+	}
 
-    strftime(buffer, len, "%c", ptm);
+	strftime(buffer, len, "%c", ptm);
 }
 
 
@@ -135,12 +135,26 @@ int main(int argc, char *argv[]){
     struct sockaddr_in serv_addr;   //server address
 
 
+    /*
+    if(argc >= 5)
+        server = gethostbyname(argv[4]);
+
+    if(argc >= 6)
+        portno = atoi(argv[5]);
+    
+    if(argc == 7)
+        intervalo = atoi(argv[6]);
+*/
+
+//1º Passo!
+    /* Create a socket point */
+    //cria a socket... AF_INET = TCP
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("ERROR opening socket");
         exit(1);
     }
-     
+	 
     //caso o host não seja válido
     server = gethostbyname("localhost");
     if (server == NULL) { 
@@ -163,14 +177,24 @@ int main(int argc, char *argv[]){
    
     printf("Connected.\n");
     
-    bool flag = true;
+    /*
+    //inicia o sensor no broker
+    iniciar_sensor(sockfd, this_sens);
     
+    bool flag = true;
+    //pthread_t thread_id;
+
+    //pthread_create(&thread_id, NULL, update_firmare, NULL);
+
     while(flag){
         //usando threads para saber se envia a próxima mensagem
         sleep(intervalo);
         send_data(sockfd, this_sens);
     }
-   
+
+
+    //pthread_join(thread_id, NULL);
+    */
     //Bye!
     printf("Disconnected.\n");
     close(sockfd);

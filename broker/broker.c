@@ -1,6 +1,7 @@
 #include "hashtable.h"
 
 #define PORT 2000
+#define TIMEOUT 1
 
 /*
     Inicia o sensor registando-o na hashtable do broker.
@@ -83,116 +84,124 @@ int main(int argc, char* argv[]){
     struct hashtable* hashtable = new_hashtable();
 
     struct sockaddr_in address;
-    int addrlen = sizeof(address);
-    int listening_socket, new_socket, fd_max, opt = 1;
+    int socket_server, 
+        socket_client,
+        address_len = sizeof(address), 
+        opt = 1,
+        fd_max = 0;
+
+    fd_set master, 
+           read_fds;
+
+    struct timeval time;
+    time.tv_sec = TIMEOUT;
+    time.tv_usec = 0;
+
     int port = PORT;            //porta default do broker
 
-    fd_set master, read_fds;
+    char buffer[MAX_SIZE];
 
     //muda a porta default (PORT)
     if(argc >= 2)
         port = atoi(argv[1]);
     
+    
+    socket_server = socket(AF_INET, SOCK_STREAM, 0);
 
-//1º Passo!
+    //Test if the socket was successfully created.
+    if (socket_server < 0) {
+        perror("ERROR opening socket");
+        exit(1);
+    }
 
-	listening_socket = socket(AF_INET, SOCK_STREAM, 0);
+    //Make sure that socket doesnt reserve the port.
+    if(setsockopt(socket_server, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
 
-    if(listening_socket < 0) {
-        printf("ERROR, socket creation failed.\n Aborting.\n");
-        exit(0);
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
+
+    //Informação do servidor
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(port);
+
+    if(bind(socket_server, (struct sockaddr *) &address, sizeof(address)) < 0) {
+        printf("Socket not bound.\n");
+        exit(EXIT_FAILURE);
     
     } else {
-        printf("Socket successfully created.\n");
+        printf("Socket bound.\n");
+    
     }
 
-
-//2º Passo!
-    if(setsockopt(listening_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-        perror("setsockopt failed"); 
-        exit(EXIT_FAILURE); 
+    //Setting the server to listen the client.
+    if(listen(socket_server, 3) < 0) {
+        printf("Listen failed.\n");
+        exit(EXIT_FAILURE);
     }
 
+    FD_ZERO(&master); //makes sure master is clean.
+    FD_SET(socket_server, &master); //adds socket_server to the master.
 
-    //informação sobre o endereço do broker
-    address.sin_family = AF_INET; 
-    address.sin_addr.s_addr = INADDR_ANY; 
-    address.sin_port = htons(port); 
+    fd_max = socket_server;
 
+    for(;;) {
 
-//3º Passo!
-    // Bind the socket to the network address and port
-    if(bind(listening_socket, (struct sockaddr *)&address, sizeof(address)) < 0){ 
-        perror("bind failed"); 
-        exit(EXIT_FAILURE); 
-    }
+        read_fds = master; //copies the fd that have something to read.
 
-
-//4º Passo!
-    if(listen(listening_socket, 3) < 0){
-        perror("listen failed"); 
-        exit(EXIT_FAILURE); 
-    }
-
-
-//5º Passo!
-    FD_ZERO(&master);
-    FD_SET(listening_socket, &master);
-
-    fd_max = listening_socket;
-    bool flag = true;
-
-    while(flag){
-        read_fds = master;
-
-        if(select(fd_max + 1, &read_fds, NULL, NULL, NULL) == -1){
+        //Checks for sockets that have info and adds to read_fds.
+        if(select(fd_max + 1, &read_fds, NULL, NULL, &time) == -1) {
             perror("Select error.");
             exit(4);
         }
-        //lets go through all the fds.
+
+        if(time.tv_sec == 0 && time.tv_usec == 0) {
+            
+            for (int i = 4; i <= fd_max; i++){
+
+                recieve_data(i, hashtable);
+            }
+
+            time.tv_sec = TIMEOUT;
+        }
+
         for (int i = 0; i <= fd_max; i++) {
-            printf("teste\n");
 
-            //checks if the file descriptor i is in read_fds (meaning that it has info).
-            if (FD_ISSET(i, &read_fds)){
+            if(FD_ISSET(i, &read_fds)) {
+                printf("teste\n");
+                if(i == socket_server) {
 
-                //new conenction incoming.
-                if(i == listening_socket) {
+                    socket_client = accept(socket_server, (struct sockaddr *) &address, (socklen_t * )&address_len);
 
-                    //accepts the new client.
-                    if((new_socket = accept(new_socket, (struct sockaddr *) &address,
-                    (socklen_t *) &addrlen)) == -1){
-                        perror("Accept failed.\n");
-                    }
+                    //Check if the new socket is valid.
+                    if(socket_client == -1) {
+                        perror("Accept of the nre socket failed.");
                     
-                    else {
-                        //updating master by adding the new socket.
-                        FD_SET(new_socket, &master);
-                        printf("Client %d connected.\n", new_socket);
+                    } else {
 
-                        iniciar_sensor(new_socket, hashtable);
-                        //updating max fd.
-                        fd_max = (fd_max < new_socket ? new_socket : fd_max);
-                    } 
-                }
-                else {
-                    /*
-                    //lê e guarda o output dado pelo servidor
-                    if(read(i, msg, BUFFERSIZE) <= 0) {
-                        printf("%d has disconected.\n", i);
-                        FD_CLR(i, &master);
-                        break;
+                        //Adding the new socket to mater.
+                        FD_SET(socket_client, &master);
+                        //printf("novo cliente\n");
+
+                        //Updating the fd_max.
+                        if (fd_max < socket_client) {
+                            fd_max = socket_client;
+                        }
+
                     }
-                    */
-                    recieve_data(i, hashtable);
-                }
 
+                } else {
+
+                    FD_CLR(i, &master);
+                    close(i);
+                }
             }
         }
     }
 
     //bye!
     printf("Disconnected.\n");
-    close(listening_socket);
+    close(socket_server);
 	return 0; 
 }
