@@ -4,6 +4,7 @@
 #define LOG_SIZE 10     //mensagens de sensores guardados
 
 struct sensor_node{
+    int socket;
     struct sensor* sensor;
     struct sensor_payload* log[LOG_SIZE];
 };

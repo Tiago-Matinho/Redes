@@ -6,8 +6,10 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <time.h>
+#include <pthread.h>
 
 #define MAXCHAR 255
+#define MAX_UPDATE_SIZE 3000
 
 #define h_addr h_addr_list[0]
 

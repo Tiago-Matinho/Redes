@@ -1,4 +1,5 @@
 #include "hashtable.h"
+#include "header.h"
 
 #define PORT 2000
 
@@ -69,6 +70,12 @@ void recieve_data(int new_socket,struct hashtable* hashtable){
 
     //verificar
     sensor_node_print(hash_get(hashtable, id));
+}
+
+
+void send_update(int sockfd, char versao[MAXCHAR], char buffer[MAX_UPDATE_SIZE]){
+    send(sockfd, versao, MAX_SIZE, 0);
+    send(sockfd, buffer, MAX_UPDATE_SIZE, 0);
 }
 
 int main(int argc, char* argv[]){

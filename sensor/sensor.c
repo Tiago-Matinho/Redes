@@ -1,7 +1,7 @@
 #include "header.h"
 
 #define INTREVALO 10
-#define PORT 2000
+#define BROKER_PORT 2000
 #define VALOR 4
 #define HOME "localhost"
 
@@ -87,11 +87,36 @@ void send_data(int sockfd, struct sensor* this_sens){
 }
 
 
+void update_firmare(int sockfd, struct sensor* this_sens){
+    FILE* fp = NULL;
+    char versao[MAXCHAR];
+    char buffer[MAX_UPDATE_SIZE];
+    char filename[MAXCHAR + 5];
+    memset(versao, '\0', MAXCHAR);
+    memset(buffer, '\0', MAX_UPDATE_SIZE);
+    memset(filename, '\0', MAXCHAR + 5);
+
+    while(true){
+        read(sockfd, versao, MAXCHAR);
+        read(sockfd, buffer, MAX_UPDATE_SIZE);
+
+        if(strcmp(versao, this_sens->versao) > 1){
+            strcpy(filename, versao);
+            strcat(versao, ".upd");
+
+            fp = fopen(filename, "w+");
+            fprintf(fp, "%s", buffer);
+            fclose(fp);
+            strcpy(this_sens->versao, versao);
+        }
+    }
+}
+
 int main(int argc, char *argv[]){
     srand(time(NULL)); //usado para a função rand()
 
     int intervalo = INTREVALO;
-    int portno = PORT;
+    int portno = BROKER_PORT;
 
     //o sensor tem de ter um ID, tipo, local e versão
     if(argc < 5){
@@ -154,16 +179,18 @@ int main(int argc, char *argv[]){
     iniciar_sensor(sockfd, this_sens);
     
     bool flag = true;
+    pthread_t thread_id;
+
+    pthread_create(&thread_id, NULL, update_firmare, NULL);
 
     while(flag){
-        //novo update de firmare
-
-
         //usando threads para saber se envia a próxima mensagem
         send_data(sockfd, this_sens);
         sleep(intervalo);
     }
 
+
+    pthread_join(thread_id, NULL);
     //Bye!
     printf("Disconnected.\n");
     close(sockfd);

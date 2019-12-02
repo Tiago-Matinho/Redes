@@ -64,6 +64,7 @@ bool hash_insert(struct hashtable* table, struct sensor_node* new_node){
         key %= MAX_SIZE;
     }
 
+    table->load++;
     table->array[key] = new_node;  
     return true;  
 }
