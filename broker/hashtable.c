@@ -1,12 +1,13 @@
 #include "hashtable.h"
 
 
-struct sensor_node* new_node(struct sensor* sensor){
+struct sensor_node* new_node(struct sensor* sensor, int socket){
     
     struct sensor_node* new = malloc(sizeof(struct sensor_node));
 
     if(new != NULL){
         new->sensor = sensor;
+        new->socket = socket;
         for(int i = 0; i < LOG_SIZE; i++)
             new->log[i] = NULL;
     }

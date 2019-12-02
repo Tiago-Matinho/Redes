@@ -15,7 +15,7 @@ struct hashtable{
 };
 
 
-struct sensor_node* new_node(struct sensor* sensor);
+struct sensor_node* new_node(struct sensor* sensor, int socket);
 void sensor_node_print(struct sensor_node* sensor);
 
 struct hashtable* new_hashtable();
