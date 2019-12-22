@@ -2,7 +2,7 @@
 
 
 
-void sensor_initialize(int new_client, struct sensor_node* array[MAX_SENSORS], int* counter){
+void sensor_initialize(int new_client, struct sensor_order_by* order){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 
@@ -18,11 +18,11 @@ void sensor_initialize(int new_client, struct sensor_node* array[MAX_SENSORS], i
 	struct sensor_node* new_node = sensor_node_new(new, new_client);
 
 	// insert into array
-	by_id_insert(new_node, array, counter);
+	sensor_order_insert(new_node, order);
 }
 
 
-void sensor_message(int socket, struct sensor_node* array[MAX_SENSORS]){
+void sensor_message(int socket, struct sensor_order_by* order){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 
@@ -38,7 +38,7 @@ void sensor_message(int socket, struct sensor_node* array[MAX_SENSORS]){
 		atoi(split[2]), split[3], split[4]);
 
 	// get respective node
-	struct sensor_node* node = array[socket - 4];
+	struct sensor_node* node = order->socket[SOCK_TO_INDEX(socket)];
 
 	// insert message into node array
 	insert_message(message, node);
@@ -115,14 +115,18 @@ int main(int argc, char *argv[]){
 	int current_sock, test;
 
 
-// sensor arrays
-	struct sensor_node* sensor_by_id[MAX_SENSORS];
-	int sensor_counter = 0;
+// saves what kind of client it is (Sensor, public client, admin)
+	char client_type[MAX_CLIENTS];
+	memset(client_type, '\0', MAX_CLIENTS);
+
+	char authentication;
+
+	struct sensor_order_by* order = sensor_order_by_new();
 
 //main loop
 	while(true){
 
-		//copy contrains the same sockets as master.
+		// copy contrains the same sockets as master.
 		copy = master;
 
 		test = select(sock_counter +1 , &copy, NULL, NULL, NULL);
@@ -147,8 +151,26 @@ int main(int argc, char *argv[]){
 					}
 
 					printf("new connection on %d\n", new_client);
-					// initialize sensor
-					sensor_initialize(new_client, sensor_by_id, &sensor_counter);
+
+					recv(new_client, &authentication, 1, 0);
+
+					switch(authentication){
+						case 'S':
+						client_type[new_client - 4] = 'S';
+						sensor_initialize(new_client,order);
+						break;
+
+						case 'C':
+						client_type[new_client - 4] = 'C';
+						break;
+
+						case 'A':
+						client_type[new_client - 4] = 'A';
+						break;
+
+						default:
+					}
+
 
 					FD_SET(new_client, &master);
 
@@ -159,9 +181,21 @@ int main(int argc, char *argv[]){
 				}
 
 				else{
-					//é um cliente a enviar mensagem
-					sensor_message(current_sock, sensor_by_id);
-					
+
+					switch(client_type[SOCK_TO_INDEX(current_sock)]){
+						//é um cliente a enviar mensagem
+						case 'S':
+						sensor_message(current_sock, order);
+						break;
+
+						case 'C':
+						break;
+
+						case 'A':
+						break;
+
+						default:
+					}
 				}
 			}
 		}

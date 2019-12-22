@@ -60,6 +60,25 @@ struct sensor_node* sensor_node_new(struct sensor* sensor, int socket){
 }
 
 
+struct sensor_order_by* sensor_order_by_new(){
+    
+    struct sensor_order_by* new = malloc(sizeof(struct sensor_order_by));
+
+    if(new != NULL){
+        for(int i = 0; i < MAX_SENSORS; i++){
+		new->socket[i] = NULL;
+		new->id[i] = NULL;
+		new->type[i] = NULL;
+		new->location[i] = NULL;
+		new->version[i] = NULL;
+        }
+
+        new->sensor_counter = 0;
+    }
+
+    return new;
+}
+
 /*---------------------------------------------------------------------------*/
 
 
@@ -81,19 +100,26 @@ void insert_message(struct sensor_message* new, struct sensor_node* node){
 /*---------------------------------------------------------------------------*/
 
 
-void by_id_insert(struct sensor_node* new, struct sensor_node* array[MAX_SENSORS],
-    int* counter){
+void sensor_order_insert(struct sensor_node* new, struct sensor_order_by* order){
+    order->sensor_counter++;
 
-    if(*counter + 1 == MAX_SENSORS - 1){
-        printf("Too many sensors\n");
+    int counter = order->sensor_counter;
+
+    if(counter == MAX_SENSORS){
+        printf("Too many sensors.\n");
         exit(1);
     }
 
-    *counter++;
+    if(new != NULL){
+        order->socket[SOCK_TO_INDEX(new->socket)];
+        order->id[counter] = new;
+        order->type[counter] = new;
+        order->location[counter] = new;
+        order->version[counter] = new;
 
-    array[new->socket - 4] = new;
+        //TODO sort
+    }
 }
-
 
 
 /*---------------------------------------------------------------------------*/

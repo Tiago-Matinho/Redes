@@ -105,17 +105,25 @@ int main(int argc, char *argv[]){
     printf("+ Connected to broker.\n");
 
 	// initialize sensor on broker side
+	char authentication = 'S';
+	send(server_socket, authentication, 1, 0);
 	sensor_initialize(server_socket, this_sensor);
+
+	int pid = fork();
 
 	// main loop
 	while(flag){
 		// send new data
-		sleep(SENSOR_INTREVAL);
-		sensor_send(server_socket, this_sensor);
-
-
-		//TODO: FORK?
-		// receive update???
+		if(pid == 0){
+			sleep(SENSOR_INTREVAL);
+			sensor_send(server_socket, this_sensor);
+		}
+		
+		//FIXME
+		else{
+			recv(server_socket, buffer, BUFF_SIZE, 0);
+			strcpy(this_sensor->version, buffer);
+		}
 	}
 
 
