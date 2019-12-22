@@ -2,43 +2,58 @@
 
 
 
-void sensor_initialize(int new_client, struct sensor* array[100]){
+void sensor_initialize(int new_client, struct sensor_node* array[MAX_SENSORS], int* counter){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 
+	// recieve message with sensor data
 	recv(new_client, buffer, BUFF_SIZE, 0);
 
+	// split message
 	char split[4][SENSOR_CHAR_LIMIT];
 	strsplit(buffer, 4, split);
 
+	// create new sensor and node
 	struct sensor* new = sensor_new(atoi(split[0]), split[1], split[2], split[3]);
+	struct sensor_node* new_node = sensor_node_new(new, new_client);
 
-	array[new_client] = new;
+	// insert into array
+	by_id_insert(new_node, array, counter);
 }
 
 
-void sensor_message(int socket, struct sensor* array[100]){
+void sensor_message(int socket, struct sensor_node* array[MAX_SENSORS]){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 
+	// recieve message data
 	recv(socket, buffer, BUFF_SIZE, 0);
 
+	// split data
 	char split[5][SENSOR_CHAR_LIMIT];
 	strsplit(buffer, 5, split);
 
-	printf("%d @ %s: %d %s version: %s\n", atoi(split[0]), split[1],
+	// create a message struct
+	struct sensor_message* message = sensor_message_new(atoi(split[0]), split[1],
 		atoi(split[2]), split[3], split[4]);
+
+	// get respective node
+	struct sensor_node* node = array[socket - 4];
+
+	// insert message into node array
+	insert_message(message, node);
+
+	printf("Cliente %d:\n", node->socket);
+	
+	for(int i = 0; i < node->log_counter; i++){
+		printf("% 3d %s % 3d %s %s\n", node->log[i]->id, node->log[i]->date,
+		node->log[i]->value, node->log[i]->type, node->log[i]->version);
+	}
 }
 
 int main(int argc, char *argv[]){
 
 	struct sockaddr_in address;
-
-	struct sensor* array[100];
-
-	for(int i = 0; i < 100; i++)
-		array[i] = NULL;
-
 
 	int listening, 
 		new_client,
@@ -99,7 +114,10 @@ int main(int argc, char *argv[]){
 
 	int current_sock, test;
 
-	char buffer[BUFF_SIZE];
+
+// sensor arrays
+	struct sensor_node* sensor_by_id[MAX_SENSORS];
+	int sensor_counter = 0;
 
 //main loop
 	while(true){
@@ -119,7 +137,6 @@ int main(int argc, char *argv[]){
 			if(FD_ISSET(current_sock, &copy)){
 				if(current_sock == listening){
 
-					printf("Aceitando novas conecções\n");
 
 					//accept new connection
 					new_client = accept(listening, (struct sockaddr *) &address, (socklen_t * )&address_len);
@@ -129,8 +146,9 @@ int main(int argc, char *argv[]){
 						exit(1);
 					}
 
+					printf("new connection on %d\n", new_client);
 					// initialize sensor
-					sensor_initialize(new_client, array);
+					sensor_initialize(new_client, sensor_by_id, &sensor_counter);
 
 					FD_SET(new_client, &master);
 
@@ -140,12 +158,10 @@ int main(int argc, char *argv[]){
 
 				}
 
-
 				else{
 					//é um cliente a enviar mensagem
-
-					printf("Client @ %d says:\n", current_sock);
-					sensor_message(current_sock, array);
+					sensor_message(current_sock, sensor_by_id);
+					
 				}
 			}
 		}

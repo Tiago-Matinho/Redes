@@ -5,7 +5,7 @@ void sensor_initialize(int socket, struct sensor* this_sensor){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 
-	//build the message
+	// build the message
 	snprintf(buffer, BUFF_SIZE, "%d", this_sensor->id);
 	strcat(buffer, ";");
 	strcat(buffer, this_sensor->type);
@@ -22,16 +22,16 @@ void sensor_initialize(int socket, struct sensor* this_sensor){
 void sensor_send(int socket, struct sensor* this_sensor){
 	char buffer[BUFF_SIZE];
     char date[DATE_CHAR_LIMIT];
-	strdate(date, DATE_CHAR_LIMIT); //FIXME
 	char value_c[SENSOR_CHAR_LIMIT];
 	memset(buffer, '\0', BUFF_SIZE);
     memset(date, '\0', DATE_CHAR_LIMIT);
     memset(value_c, '\0', SENSOR_CHAR_LIMIT);
+
     int value = rand() % 101; // random
 	snprintf(value_c, SENSOR_CHAR_LIMIT, "%d", value);
+	strdate(date, DATE_CHAR_LIMIT);
 
     // build the message
-	printf("%s\n", date);
 	snprintf(buffer, BUFF_SIZE, "%d", this_sensor->id);
     strcat(buffer, ";");
     strcat(buffer, date);
@@ -44,6 +44,7 @@ void sensor_send(int socket, struct sensor* this_sensor){
 
 
     send(socket, buffer, BUFF_SIZE, 0);
+	printf("%s data sent\n", date);
 }
 
 int main(int argc, char *argv[]){
@@ -109,8 +110,8 @@ int main(int argc, char *argv[]){
 	// main loop
 	while(flag){
 		// send new data
-		sensor_send(server_socket, this_sensor);
 		sleep(SENSOR_INTREVAL);
+		sensor_send(server_socket, this_sensor);
 
 
 		//TODO: FORK?
