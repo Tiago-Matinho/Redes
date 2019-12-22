@@ -1,6 +1,6 @@
 #include "header.h"
 
-#define INTREVALO 10
+#define INTREVALO 2
 #define BROKER_PORT 2000
 #define VALOR 4
 #define HOME "localhost"
@@ -27,24 +27,28 @@ void iniciar_sensor(int sockfd,
     strcpy(local, this_sens->local);
     strcpy(versao, this_sens->versao);
 
+
     //envia os dados para o broker
     send(sockfd, &id, sizeof(id), 0);
     send(sockfd, tipo, strlen(tipo), 0);
     send(sockfd, local, strlen(local), 0);
     send(sockfd, versao, strlen(versao), 0);
 
-    bool accepeted = false;
+    printf("a registar\n");
+    char accepeted = 't';
 
     //recebe se foi registado no broker ou não
-    read(sockfd, &accepeted, sizeof(accepeted));
+    /*recv(sockfd, &accepeted, sizeof(accepeted), 0);
 
-    if(accepeted)
+    if(accepeted == 't')
         printf("Registado com sucesso.\n");
 
     else{
         printf("Erro: Sensor com mesmo ID já registado.\n");
         exit(2);
     }
+    */
+    
 }
 
 //passa a data atual para string (Retirado das aulas)
@@ -77,16 +81,28 @@ void send_data(int sockfd, struct sensor* this_sens){
     strcpy(versao, this_sens->versao);
     strdate(data, MAXCHAR);
 
+    char buffer[1000];
+    memset(buffer, '\0', 1000);
+
+    strcat(buffer, id);
+    strcat(buffer, " ");
+    strcat(buffer, data);
+    strcat(buffer, " ");
+    strcat(buffer, tipo);
+    strcat(buffer, " ");
+    strcat(buffer, versao);
+    strcat(buffer, "\n");
     //envia os dados para o broker criar uma struct do tipo
     //sensor_payload
-    send(sockfd, &id, sizeof(id), 0);
-    send(sockfd, data, strlen(data), 0);
-    send(sockfd, &valor, sizeof(valor), 0);
-    send(sockfd, tipo, strlen(tipo), 0);
-    send(sockfd, versao, strlen(versao), 0);
+    send(sockfd, buffer, 1000, 0);
+    //send(sockfd, &id, sizeof(id), 0);
+    //send(sockfd, data, strlen(data), 0);
+    //send(sockfd, &valor, sizeof(valor), 0);
+    //send(sockfd, tipo, strlen(tipo), 0);
+    //send(sockfd, versao, strlen(versao), 0);
 }
 
-/*
+
 void update_firmare(int sockfd, struct sensor* this_sens){
     FILE* fp = NULL;
     char versao[MAXCHAR];
@@ -111,7 +127,7 @@ void update_firmare(int sockfd, struct sensor* this_sens){
         }
     }
 }
-*/
+
 
 int main(int argc, char *argv[]){
     srand(time(NULL)); //usado para a função rand()
@@ -127,14 +143,22 @@ int main(int argc, char *argv[]){
     struct sensor* this_sens = new_sensor(atoi(argv[1]), argv[2], argv[3], argv[4]);
 
     
-    //sockfd -> socket
     int sockfd;
     int intervalo = INTREVALO;
     int portno = BROKER_PORT;
-    struct hostent *server;// = gethostbyname(HOME); //host entety
+    struct hostent *server = gethostbyname(HOME); //host entety
     struct sockaddr_in serv_addr;   //server address
 
+    if(argc >= 5)
+        server = gethostbyname(argv[4]);
 
+    if(argc >= 6)
+        portno = atoi(argv[5]);
+    
+    if(argc == 7)
+        intervalo = atoi(argv[6]);
+
+    //Cria um socket para comunicar com o broker
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("ERROR opening socket");
@@ -161,14 +185,20 @@ int main(int argc, char *argv[]){
         exit(2);
     }
    
+   
     printf("Connected.\n");
     
     bool flag = true;
+
+    char buffer[MAXCHAR];
+
+    iniciar_sensor(sockfd, this_sens);
     
     while(flag){
         //usando threads para saber se envia a próxima mensagem
-        sleep(intervalo);
         send_data(sockfd, this_sens);
+        sleep(intervalo);
+
     }
    
     //Bye!

@@ -34,11 +34,13 @@ void sensor_node_print(struct sensor_node* sensor){
 
     //sensor_print(sensor->sensor);
     
-    printf("LOG:\n\n\n");
+    printf("LOG:\n\n");
     printf("DATE\tID\tTYPE\tVALUE\n");
 
-    for(int i = 0; i < LOG_SIZE; i++)
-        sensor_payload_print(sensor->log[i]);
+    for(int i = 0; i < LOG_SIZE; i++){
+        if(sensor->log[i] != NULL)
+            sensor_payload_print(sensor->log[i]);
+    }
 
     printf("\n");
 }
