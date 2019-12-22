@@ -42,7 +42,7 @@ void sensor_print(struct sensor* sensor){
     if(sensor == NULL)
         return;
 
-    printf("%5d: %5s %20s %5s.\n", sensor->id, sensor->tipo,
+    printf("%d: %s %s %s.\n", sensor->id, sensor->tipo,
         sensor->local, sensor->versao);
 }
 

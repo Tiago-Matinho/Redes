@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <time.h>
 #include <pthread.h>
+#include <sys/select.h>
 
 #define MAXCHAR 255
 #define MAX_UPDATE_SIZE 3000

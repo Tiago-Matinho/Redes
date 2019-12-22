@@ -1,7 +1,7 @@
 #include "hashtable.h"
-#include "header.h"
 
 #define PORT 2000
+#define TIMEOUT 10
 
 /*
     Inicia o sensor registando-o na hashtable do broker.
@@ -24,27 +24,34 @@ void iniciar_sensor(int new_socket, struct hashtable* hashtable){
     read(new_socket, local, MAXCHAR);
     read(new_socket, versao, MAXCHAR);
 
+    printf("a registar\n");
     //cria um novo sensor e um node da hashtable
     struct sensor* new_s = new_sensor(id, tipo, local, versao);
-    struct sensor_node* new_n = new_node(new_s);
+    struct sensor_node* new_n = new_node(new_s, new_socket);
 
-    bool accepeted = true;
+    char accepeted = 't';
 
+    hash_insert(hashtable, new_n);
     //insere na hashtable e envia um valor booleano se inserido com sucesso
+    /*
     if(!hash_insert(hashtable, new_n)){
-        accepeted = false;
+        accepeted = 'f';
         send(new_socket, &accepeted, sizeof(accepeted), 0);
     }
 
     else
         send(new_socket, &accepeted, sizeof(accepeted), 0);
+
+    */
+    //verificar
+    sensor_node_print(hash_get(hashtable, id));
 }
 
 
 /*
     Recebe as mensagens enviadas pelo sensor usando TCP.
 */
-void recieve_data(int new_socket,struct hashtable* hashtable){
+void recieve_data(int new_socket, struct hashtable* hashtable){
     //variáveis onde vai guardar os valores recebidos
     int id;
     char data[MAXCHAR];
@@ -56,20 +63,27 @@ void recieve_data(int new_socket,struct hashtable* hashtable){
     memset(versao, '\0', MAXCHAR);
 
     //lê o que foi enviado pelo sensor para o new_socket
-    read(new_socket, &id, sizeof(id));
-    read(new_socket, data, MAX_SIZE);
-    read(new_socket, &valor, sizeof(valor));
-    read(new_socket, tipo, MAX_SIZE);
-    read(new_socket, versao, MAX_SIZE);
-    
+    /*recv(new_socket, &id, sizeof(id), 0);
+    recv(new_socket, data, MAX_SIZE, 0);
+    recv(new_socket, &valor, sizeof(valor), 0);
+    recv(new_socket, tipo, MAX_SIZE, 0);
+    recv(new_socket, versao, MAX_SIZE, 0);
+    */
+
+    char buffer[1000];
+    memset(buffer, '\0', 1000);
+
+    recv(new_socket, buffer, 1000, 0);
+
+    printf("%s\n", buffer);
     //cria uma nova struct do tipo sensor_payload com as novas mensagens
-    struct sensor_payload* payload = new_sen_payload(id, data, valor, tipo, versao);
+    //struct sensor_payload* payload = new_sen_payload(id, data, valor, tipo, versao);
     
     //adiciona ao array de 10 ultimas mensagens do sensor
-    add_payload(hashtable, payload);
+    //add_payload(hashtable, payload);
 
     //verificar
-    sensor_node_print(hash_get(hashtable, id));
+    //sensor_node_print(hash_get(hashtable, id));
 }
 
 
@@ -83,89 +97,129 @@ int main(int argc, char* argv[]){
     //hashtable que guarda a informação sobre os sensores
     struct hashtable* hashtable = new_hashtable();
 
-    //server_fd -> socket usada para fazer o listening
-    //new_socket -> porta onde se vai comunicar com o sensor
-    int server_fd, new_socket; 
-	struct sockaddr_in address; //endereço do broker
-	int port = PORT;            //porta default do broker
-	
-	int opt = 1;      // for setsockopt() SO_REUSEADDR, below
-	int addrlen = sizeof(address);
+    fd_set master;
+    fd_set read_fds;
+    int fd_max = 0;
+
+    int sockt_listener;
+    int new_client;
+    struct sockaddr_in address;
+    int address_len;
+
+    int port = PORT;            //porta default do broker
+    int opt = 1;
+
+
+    struct timeval time;
+    time.tv_sec = 10;
+    time.tv_usec = 0;
 
     //muda a porta default (PORT)
-    if(argc == 2)
+    if(argc >= 2)
         port = atoi(argv[1]);
     
 
-//1º Passo!
-    // Creating socket file descriptor
-    //cria a socket... AF_INET = TCP
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) 
-    { 
-        perror("socket failed"); 
-        exit(EXIT_FAILURE); 
-    } 
+    //Informação do servidor
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(port);
 
-
-//2º Passo!     
-    // Forcefully attaching socket to port
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, 
-                                                  &opt, sizeof(opt))) 
-    { 
-        perror("setsockopt failed"); 
-        exit(EXIT_FAILURE); 
-    } 
-
-    //informação sobre o endereço do broker
-    address.sin_family = AF_INET; 
-    address.sin_addr.s_addr = INADDR_ANY; 
-    address.sin_port = htons( port ); 
-
-
-//3º Passo!
-    // Bind the socket to the network address and port
-    if (  bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0  ) 
-    { 
-        perror("bind failed"); 
-        exit(EXIT_FAILURE); 
-    }
-
-
-//4º Passo!
-    if (listen(server_fd, 20) < 0) 
-    { 
-        perror("listen failed"); 
-        exit(EXIT_FAILURE); 
-    }
-
-
-//5º Passo!
-    // Wait for a connection
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address,  
-                       (socklen_t*)&addrlen))<0) 
-    { 
-        perror("accept failed"); 
-        exit(EXIT_FAILURE); 
-    }
     
-//TODO: usar select aqui para responder a todos os clientes!
+    //listening socket
+    sockt_listener = socket(AF_INET, SOCK_STREAM, 0);
 
-    //new_socket = sensor ligado    
-    printf("Client connected.\n");
-
-    //incia esse sensor
-    iniciar_sensor(new_socket, hashtable);
-
-    bool flag = true;
-
-    //loop infinito
-    while(flag){
-        recieve_data(new_socket, hashtable);
+    if (sockt_listener < 0) {
+        perror("ERROR opening socket");
+        exit(1);
     }
 
+
+    //setsockopt
+    if(setsockopt(sockt_listener, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
+
+
+
+    //bind
+    if(bind(sockt_listener, (struct sockaddr *) &address, sizeof(address)) < 0){
+        printf("Socket not bound.\n");
+        exit(EXIT_FAILURE);
+    
+    } else {
+        printf("Socket bound.\n");
+    
+    }
+
+    //listen
+    //Setting the server to listen the client.
+    if(listen(sockt_listener, 10) < 0) {
+        printf("Listen failed.\n");
+        exit(EXIT_FAILURE);
+    }
+
+
+    FD_ZERO(&master); //makes sure master is clean.
+    FD_ZERO(&read_fds);
+    FD_SET(sockt_listener, &master); //adds sockt_listener to the master.
+
+    fd_max = sockt_listener;
+
+    for(;;){
+
+        read_fds = master; //copies the fd that have something to read.
+
+        //Checks for sockets that have info and adds to read_fds.
+        if(select(fd_max + 1, &read_fds, NULL, NULL, NULL) == -1) {
+            perror("Select error.");
+            exit(4);
+        }
+
+        for (int i = 3; i <= fd_max; i++){
+            if(FD_ISSET(i, &read_fds)){
+                if(i == sockt_listener){
+
+                    new_client = accept(sockt_listener, (struct sockaddr *) &address, (socklen_t * )&address_len);
+
+
+                    //Check if the new socket is valid.
+                    if(new_client == -1) {
+                        perror("Accept of the nre socket failed.");
+                    
+                    }
+                    else{
+                        
+                        //Adding the new socket to mater.
+                        FD_SET(new_client, &master);
+                        //Updating the fd_max.
+                        if (fd_max < new_client){
+                            fd_max = new_client;
+                        }
+                        
+                        printf("New client on socket: %d\n", new_client);
+                        iniciar_sensor(new_client, hashtable);
+
+
+                    }
+                }
+
+                else{
+                    recieve_data(i, hashtable);
+                    /*
+                    if(time.tv_sec == 0 && time.tv_usec == 0){
+                        time.tv_sec = TIMEOUT;
+                    }
+                    */
+                }
+
+            }
+        }
+    }
 
     //bye!
     printf("Disconnected.\n");
-    close(server_fd);
+    close(sockt_listener);
 	return 0; 
 }
