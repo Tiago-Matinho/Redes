@@ -1,12 +1,13 @@
 #include "hashtable.h"
 
 
-struct sensor_node* new_node(struct sensor* sensor){
+struct sensor_node* new_node(struct sensor* sensor, int socket){
     
     struct sensor_node* new = malloc(sizeof(struct sensor_node));
 
     if(new != NULL){
         new->sensor = sensor;
+        new->socket = socket;
         for(int i = 0; i < LOG_SIZE; i++)
             new->log[i] = NULL;
     }
@@ -33,11 +34,13 @@ void sensor_node_print(struct sensor_node* sensor){
 
     //sensor_print(sensor->sensor);
     
-    printf("LOG:\n\n\n");
+    printf("LOG:\n\n");
     printf("DATE\tID\tTYPE\tVALUE\n");
 
-    for(int i = 0; i < LOG_SIZE; i++)
-        sensor_payload_print(sensor->log[i]);
+    for(int i = 0; i < LOG_SIZE; i++){
+        if(sensor->log[i] != NULL)
+            sensor_payload_print(sensor->log[i]);
+    }
 
     printf("\n");
 }
