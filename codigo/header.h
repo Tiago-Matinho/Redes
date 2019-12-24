@@ -54,7 +54,7 @@ struct sensor_node{
 };
 
 
-struct sensor_order_by{
+struct sensor_arrays{
     struct sensor_node* socket[MAX_SENSORS];
 	struct sensor_node* id[MAX_SENSORS];
 	struct sensor_node* type[MAX_SENSORS];
@@ -77,7 +77,7 @@ struct sensor_message* sensor_message_new(int id, char date[DATE_CHAR_LIMIT],
 struct sensor_node* sensor_node_new(struct sensor* sensor, int socket);
 
 
-struct sensor_order_by* sensor_order_by_new();
+struct sensor_arrays* sensor_arrays_new();
 
 
 /*---------------------------------------------------------------------------*/
@@ -89,7 +89,15 @@ void insert_message(struct sensor_message* new, struct sensor_node* node);
 /*---------------------------------------------------------------------------*/
 
 
-void sensor_order_insert(struct sensor_node* new, struct sensor_order_by* order);
+void sensor_arrays_insert(struct sensor_node* new, struct sensor_arrays* order);
+
+
+/*---------------------------------------------------------------------------*/
+
+
+struct public_cli{
+    
+};
 
 
 /*---------------------------------------------------------------------------*/

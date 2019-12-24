@@ -106,7 +106,7 @@ int main(int argc, char *argv[]){
 
 	// initialize sensor on broker side
 	char authentication = 'S';
-	send(server_socket, authentication, 1, 0);
+	send(server_socket, &authentication, sizeof(authentication), 0);
 	sensor_initialize(server_socket, this_sensor);
 
 	int pid = fork();

@@ -2,7 +2,7 @@
 
 
 
-void sensor_initialize(int new_client, struct sensor_order_by* order){
+void sensor_initialize(int new_client, struct sensor_arrays* order){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 
@@ -17,12 +17,12 @@ void sensor_initialize(int new_client, struct sensor_order_by* order){
 	struct sensor* new = sensor_new(atoi(split[0]), split[1], split[2], split[3]);
 	struct sensor_node* new_node = sensor_node_new(new, new_client);
 
-	// insert into array
-	sensor_order_insert(new_node, order);
+	// insert into arrays
+	sensor_arrays_insert(new_node, order);
 }
 
 
-void sensor_message(int socket, struct sensor_order_by* order){
+void sensor_message(int socket, struct sensor_arrays* order){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 
@@ -51,6 +51,101 @@ void sensor_message(int socket, struct sensor_order_by* order){
 	}
 }
 
+
+/*---------------------------------------------------------------------------*/
+
+
+void public_cli_event(int socket, struct sensor_arrays* order){
+	char buffer[BUFF_SIZE];
+	char value[SENSOR_CHAR_LIMIT];
+	memset(buffer, '\0', BUFF_SIZE);
+
+	// receive client request
+	recv(socket, buffer, BUFF_SIZE, 0);
+
+	char split[2][SENSOR_CHAR_LIMIT];
+
+	for(int i = 0; i < 2; i++)
+		memset(split, '\0', SENSOR_CHAR_LIMIT);
+
+	
+	strsplit(buffer, 2, split);
+
+	/*TODO visto que os arrays estão ordenados podemos procurar o primeiro elemento
+	duma maneira mais inteligente. Tambem pode-se deixar de precorrer o array quando
+	sabemos q não existe mais nada à frente.*/
+	int counter = 0, i = 0, start = 0;
+
+	printf("Chega aqui\n");
+	
+	switch(split[0][0]){
+		// sends locations of sensor of a certain type
+		case 'T':
+		// walks sensor type array and counts
+		while(order->type[i] != NULL){
+			// if it's the last one
+			if(counter != 0 && strcmp(split[1], order->type[i]->sensor->type) != 0)
+				break;
+
+			if(strcmp(split[1], order->type[i]->sensor->type) == 0)
+				counter++;
+
+			if(counter == 1)
+				start = i;
+			
+			i++;
+		}
+
+		// send number of sensors found
+		send(socket, &counter, sizeof(counter), 0);
+
+		for(i = start; i < start + counter; i ++){
+			if(order->type[i] != NULL){
+				// if it's the type we are looking after
+				// sends it's location
+				send(socket, order->type[i]->sensor->location, SENSOR_CHAR_LIMIT, 0);	
+			}
+		}
+		break;
+
+		//FIXME
+		// sends last reading of a location
+		case 'L':
+		// walks sensor location array
+		for(i = 0; i < order->sensor_counter; i ++){
+			if(order->location[i] != NULL){
+				// if it's the right location sends it's last reading
+				if(strcmp(split[1], order->location[i]->sensor->location) == 0){
+					if(order->location[i]->log[0] != NULL){
+						// build the message
+						memset(buffer, '\0', BUFF_SIZE);
+						memset(value, '\0', SENSOR_CHAR_LIMIT);
+						snprintf(value, SENSOR_CHAR_LIMIT, "%d", order->location[i]->log[0]->value);
+						
+						strcat(buffer, order->location[i]->log[0]->date);
+						strcat(buffer, ";");
+						strcat(buffer, value);
+						strcat(buffer, ";");
+						strcat(buffer, order->location[i]->log[0]->type);
+
+						// send message
+						send(socket, buffer, strlen(buffer), 0);	
+					}
+				}
+			}
+		}
+		break;
+
+		default:
+		break;
+	}
+	
+}
+
+
+/*---------------------------------------------------------------------------*/
+
+
 int main(int argc, char *argv[]){
 
 	struct sockaddr_in address;
@@ -63,9 +158,9 @@ int main(int argc, char *argv[]){
 
 	fd_set master, copy;
 
-	struct timeval time;
+	/*struct timeval time;
 	time.tv_sec = SENSOR_INTREVAL;
-	time.tv_usec = 0;
+	time.tv_usec = 0;*/
 
 //creates a listening socket
 	listening = socket(AF_INET, SOCK_STREAM, 0);
@@ -121,7 +216,7 @@ int main(int argc, char *argv[]){
 
 	char authentication;
 
-	struct sensor_order_by* order = sensor_order_by_new();
+	struct sensor_arrays* order = sensor_arrays_new();
 
 //main loop
 	while(true){
@@ -150,25 +245,27 @@ int main(int argc, char *argv[]){
 						exit(1);
 					}
 
-					printf("new connection on %d\n", new_client);
 
 					recv(new_client, &authentication, 1, 0);
 
 					switch(authentication){
 						case 'S':
-						client_type[new_client - 4] = 'S';
+						client_type[SOCK_TO_INDEX(current_sock)] = 'S';
 						sensor_initialize(new_client,order);
+						printf("new sensor connected on %d\n", new_client);
 						break;
 
 						case 'C':
-						client_type[new_client - 4] = 'C';
+						client_type[SOCK_TO_INDEX(current_sock)] = 'C';
+						printf("new public client connected on %d\n", new_client);
 						break;
 
 						case 'A':
-						client_type[new_client - 4] = 'A';
+						client_type[SOCK_TO_INDEX(current_sock)] = 'A';
 						break;
 
 						default:
+						break;
 					}
 
 
@@ -181,20 +278,22 @@ int main(int argc, char *argv[]){
 				}
 
 				else{
+					//é um cliente a enviar mensagem
 
 					switch(client_type[SOCK_TO_INDEX(current_sock)]){
-						//é um cliente a enviar mensagem
 						case 'S':
 						sensor_message(current_sock, order);
 						break;
 
 						case 'C':
+						public_cli_event(current_sock, order);
 						break;
 
 						case 'A':
 						break;
 
 						default:
+						break;
 					}
 				}
 			}
