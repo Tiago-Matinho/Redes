@@ -211,7 +211,7 @@ void sensor_arrays_insert(struct sensor_node* new, struct sensor_arrays* order){
     }
 
     if(new != NULL){
-        order->socket[SOCK_TO_INDEX(new->socket)] = new;
+        order->socket[new->socket] = new;
         order->id[counter] = new;
         order->type[counter] = new;
         order->location[counter] = new;

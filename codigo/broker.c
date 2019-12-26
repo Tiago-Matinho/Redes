@@ -2,7 +2,7 @@
 
 
 
-void sensor_initialize(int new_client, struct sensor_arrays* order){
+void sensor_initialize(int new_client, struct sensor_arrays* arrays){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 
@@ -18,11 +18,11 @@ void sensor_initialize(int new_client, struct sensor_arrays* order){
 	struct sensor_node* new_node = sensor_node_new(new, new_client);
 
 	// insert into arrays
-	sensor_arrays_insert(new_node, order);
+	sensor_arrays_insert(new_node, arrays);
 }
 
 
-void sensor_message(int socket, struct sensor_arrays* order){
+void sensor_message(int socket, struct sensor_arrays* arrays){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 
@@ -33,17 +33,18 @@ void sensor_message(int socket, struct sensor_arrays* order){
 	char split[5][SENSOR_CHAR_LIMIT];
 	strsplit(buffer, 5, split);
 
+
 	// create a message struct
 	struct sensor_message* message = sensor_message_new(atoi(split[0]), split[1],
 		atoi(split[2]), split[3], split[4]);
 
 	// get respective node
-	struct sensor_node* node = order->socket[SOCK_TO_INDEX(socket)];
+	struct sensor_node* node = arrays->socket[socket];
 
 	// insert message into node array
 	insert_message(message, node);
 
-	printf("Cliente %d:\n", node->socket);
+	printf("Sensor %d:\n", node->socket);
 	
 	for(int i = 0; i < node->log_counter; i++){
 		printf("% 3d %s % 3d %s %s\n", node->log[i]->id, node->log[i]->date,
@@ -55,10 +56,12 @@ void sensor_message(int socket, struct sensor_arrays* order){
 /*---------------------------------------------------------------------------*/
 
 
-void public_cli_event(int socket, struct sensor_arrays* order){
+void public_cli_event(int socket, struct sensor_arrays* arrays){
 	char buffer[BUFF_SIZE];
 	char value[SENSOR_CHAR_LIMIT];
 	memset(buffer, '\0', BUFF_SIZE);
+
+	printf("Chegou ao evento\n");
 
 	// receive client request
 	recv(socket, buffer, BUFF_SIZE, 0);
@@ -82,12 +85,12 @@ void public_cli_event(int socket, struct sensor_arrays* order){
 		// sends locations of sensor of a certain type
 		case 'T':
 		// walks sensor type array and counts
-		while(order->type[i] != NULL){
+		while(arrays->type[i] != NULL){
 			// if it's the last one
-			if(counter != 0 && strcmp(split[1], order->type[i]->sensor->type) != 0)
+			if(counter != 0 && strcmp(split[1], arrays->type[i]->sensor->type) != 0)
 				break;
 
-			if(strcmp(split[1], order->type[i]->sensor->type) == 0)
+			if(strcmp(split[1], arrays->type[i]->sensor->type) == 0)
 				counter++;
 
 			if(counter == 1)
@@ -100,10 +103,10 @@ void public_cli_event(int socket, struct sensor_arrays* order){
 		send(socket, &counter, sizeof(counter), 0);
 
 		for(i = start; i < start + counter; i ++){
-			if(order->type[i] != NULL){
+			if(arrays->type[i] != NULL){
 				// if it's the type we are looking after
 				// sends it's location
-				send(socket, order->type[i]->sensor->location, SENSOR_CHAR_LIMIT, 0);	
+				send(socket, arrays->type[i]->sensor->location, SENSOR_CHAR_LIMIT, 0);	
 			}
 		}
 		break;
@@ -112,21 +115,21 @@ void public_cli_event(int socket, struct sensor_arrays* order){
 		// sends last reading of a location
 		case 'L':
 		// walks sensor location array
-		for(i = 0; i < order->sensor_counter; i ++){
-			if(order->location[i] != NULL){
+		for(i = 0; i < arrays->sensor_counter; i ++){
+			if(arrays->location[i] != NULL){
 				// if it's the right location sends it's last reading
-				if(strcmp(split[1], order->location[i]->sensor->location) == 0){
-					if(order->location[i]->log[0] != NULL){
+				if(strcmp(split[1], arrays->location[i]->sensor->location) == 0){
+					if(arrays->location[i]->log[0] != NULL){
 						// build the message
 						memset(buffer, '\0', BUFF_SIZE);
 						memset(value, '\0', SENSOR_CHAR_LIMIT);
-						snprintf(value, SENSOR_CHAR_LIMIT, "%d", order->location[i]->log[0]->value);
+						snprintf(value, SENSOR_CHAR_LIMIT, "%d", arrays->location[i]->log[0]->value);
 						
-						strcat(buffer, order->location[i]->log[0]->date);
+						strcat(buffer, arrays->location[i]->log[0]->date);
 						strcat(buffer, ";");
 						strcat(buffer, value);
 						strcat(buffer, ";");
-						strcat(buffer, order->location[i]->log[0]->type);
+						strcat(buffer, arrays->location[i]->log[0]->type);
 
 						// send message
 						send(socket, buffer, strlen(buffer), 0);	
@@ -170,8 +173,6 @@ int main(int argc, char *argv[]){
 		printf("ERROR, socket creation failed.\n Aborting.\n");
 		exit(0);
 	
-	} else {
-		printf("Socket successfully created.\n");
 	}
 
 //Make sure that socket doesnt reserve the port.
@@ -189,10 +190,6 @@ int main(int argc, char *argv[]){
 	if(bind(listening, (struct sockaddr *) &address, sizeof(address)) < 0) {
 		printf("Socket not bound.\n");
 		exit(EXIT_FAILURE);
-	
-	} else {
-		printf("Socket bound.\n");
-	
 	}
 
 //Setting the server to listen the client.
@@ -211,12 +208,14 @@ int main(int argc, char *argv[]){
 
 
 // saves what kind of client it is (Sensor, public client, admin)
-	char client_type[MAX_CLIENTS];
-	memset(client_type, '\0', MAX_CLIENTS);
+	int client_type[MAX_CLIENTS];
+	for(int i = 0; i < MAX_CLIENTS; i++)
+		client_type[i] = -1;
+	//memset(client_type, '\0', MAX_CLIENTS);
 
 	char authentication;
 
-	struct sensor_arrays* order = sensor_arrays_new();
+	struct sensor_arrays* arrays = sensor_arrays_new();
 
 //main loop
 	while(true){
@@ -250,18 +249,18 @@ int main(int argc, char *argv[]){
 
 					switch(authentication){
 						case 'S':
-						client_type[SOCK_TO_INDEX(current_sock)] = 'S';
-						sensor_initialize(new_client,order);
+						client_type[current_sock] = 0;
+						sensor_initialize(new_client,arrays);
 						printf("new sensor connected on %d\n", new_client);
 						break;
 
 						case 'C':
-						client_type[SOCK_TO_INDEX(current_sock)] = 'C';
+						client_type[current_sock] = 1;
 						printf("new public client connected on %d\n", new_client);
 						break;
 
 						case 'A':
-						client_type[SOCK_TO_INDEX(current_sock)] = 'A';
+						client_type[current_sock] = 2;
 						break;
 
 						default:
@@ -278,18 +277,20 @@ int main(int argc, char *argv[]){
 				}
 
 				else{
-					//é um cliente a enviar mensagem
-
-					switch(client_type[SOCK_TO_INDEX(current_sock)]){
-						case 'S':
-						sensor_message(current_sock, order);
+					// proof of concept
+					sensor_message(current_sock, arrays);
+					
+					//FIXME tentar mandando sempre o tipo???
+					switch(client_type[current_sock]){
+						case 0:
+						sensor_message(current_sock, arrays);
 						break;
 
-						case 'C':
-						public_cli_event(current_sock, order);
+						case 1:
+						public_cli_event(current_sock, arrays);
 						break;
 
-						case 'A':
+						case 2:
 						break;
 
 						default:
@@ -299,4 +300,6 @@ int main(int argc, char *argv[]){
 			}
 		}
 	}
+
+	return 0;
 }

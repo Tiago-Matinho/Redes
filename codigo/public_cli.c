@@ -8,9 +8,11 @@ void list_locations(int socket, char type[BUFF_SIZE]){
 	strcat(buffer, "T;");
 	strcat(buffer, type);
 
+
 	// sends request
 	send(socket, buffer, BUFF_SIZE, 0);
 
+	printf("%s\n", buffer);
 	// recieves number of packages will have to recv
 	int n = 0;
 	//TODO

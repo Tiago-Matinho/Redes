@@ -3,10 +3,13 @@
 
 void sensor_initialize(int socket, struct sensor* this_sensor){
 	char buffer[BUFF_SIZE];
+	char id_c[12];
 	memset(buffer, '\0', BUFF_SIZE);
+	memset(id_c, '\0', 12);
 
 	// build the message
-	snprintf(buffer, BUFF_SIZE, "%d", this_sensor->id);
+	snprintf(id_c, 12, "%d", this_sensor->id);
+	strcat(buffer, id_c);
 	strcat(buffer, ";");
 	strcat(buffer, this_sensor->type);
 	strcat(buffer, ";");

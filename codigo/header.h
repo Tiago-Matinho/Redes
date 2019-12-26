@@ -23,7 +23,8 @@
 #define HOME "localhost"
 #define SENSOR_LOG_SIZE 10
 
-#define SOCK_TO_INDEX(i) ((i) - 4)
+#define SOCK_TO_INDEX(i) ((i) - 3)
+#define INT_TO_CHAR(c) ((c) + '0')
 
 
 /*---------------------------------------------------------------------------*/
