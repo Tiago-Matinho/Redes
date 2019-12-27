@@ -1,64 +1,33 @@
 #include "header.h"
 
+void last_reading(int socket, char id[BUFF_SIZE]){
+    char buffer[BUFF_SIZE];
+    memset(buffer, '\0', BUFF_SIZE);
 
-void list_locations(int socket, char type[BUFF_SIZE]){
-	char buffer[BUFF_SIZE];
-	memset(buffer, '\0', BUFF_SIZE);
+    // build message
+    strcat(buffer, "R;");
+    strcat(buffer, id);
 
-	strcat(buffer, "T;");
-	strcat(buffer, type);
+    // send request
+    send(socket, buffer, BUFF_SIZE, 0);
+
+    memset(buffer, '\0', BUFF_SIZE);
+
+    // recieves last reading
+    recv(socket, buffer, BUFF_SIZE, 0);
 
 
-	// sends request
-	send(socket, buffer, BUFF_SIZE, 0);
+    char split[5][SENSOR_CHAR_LIMIT];
+    for(int i = 0; i < 5; i++)
+        memset(split[i], '\0', SENSOR_CHAR_LIMIT);
 
-	// recieves number of packages that will have to recv
-	int n = 0;
-	recv(socket, &n, sizeof(n), 0);
+    strsplit(buffer, 5, split);
 
-	//TODO e se existirem dois sensores do mesmo tipo na mesma localidade?
-	printf("+ Sensors found: %d\n", n);
-
-	for(int i = 0; i < n; i++){
-		recv(socket, buffer, SENSOR_CHAR_LIMIT, 0);
-		printf("- %s\n", buffer);
-	}
+    printf("ID\tDATE\t\t\t\tTYPE\tVALUE\tVERSION\n");
+    printf("%s\t%s\t%s\t%s\t%s\n", split[0], split[1], split[2], split[3], split[4]);
+    
 }
 
-
-void last_reading(int socket, char location[SENSOR_CHAR_LIMIT]){
-	char buffer[BUFF_SIZE];
-	char split[3][SENSOR_CHAR_LIMIT];
-	memset(buffer, '\0', BUFF_SIZE);
-
-	strcat(buffer, "L;");
-	strcat(buffer, location);
-
-	// sends request
-	send(socket, buffer, BUFF_SIZE, 0);
-
-	// recieves number of packages that will have to recv
-	int n = 0;
-	recv(socket, &n, sizeof(n), 0);
-
-	printf("+ Sensors found: %d\n", n);
-
-	printf("\n+ %s\n", location);
-
-	for(int i = 0; i < n; i++){
-
-		for(int j = 0; j < 3; j++)
-			memset(split[j], '\0', SENSOR_CHAR_LIMIT);
-
-		recv(socket, buffer, BUFF_SIZE, 0);
-
-		//printf("recebeu %s\n", buffer);
-
-		strsplit(buffer, 3, split);
-
-		printf("- %s %s %s\n", split[0], split[1], split[2]);
-	}
-}
 
 
 int main(int argc, char *argv[]){
@@ -106,7 +75,7 @@ int main(int argc, char *argv[]){
     printf("+ Connected to broker.\n");
 
 	// initialize sensor on broker side
-	char authentication = 'C';
+	char authentication = 'A';
 	send(server_socket, &authentication, sizeof(authentication), 0);
 
     char command;
@@ -120,16 +89,20 @@ int main(int argc, char *argv[]){
 
         switch(command){
 
-            case 'T':
-            list_locations(server_socket, buffer);
-            break;
-
-            case 'L':
+            case 'R':
 			last_reading(server_socket, buffer);
             break;
 
-			//TODO publish subscribe
-            case 'P':
+            case 'L':
+            //list_sensors(server_socket, buffer);
+            break;
+
+			//TODO Update firmware
+            case 'U':
+            break;
+
+            //TODO desativar
+            case 'D':
             break;
 
             default:

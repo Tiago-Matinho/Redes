@@ -14,12 +14,13 @@
 #define h_addr h_addr_list[0]
 
 #define SENSOR_INTREVAL 5
-#define SENSOR_CHAR_LIMIT 51
 #define MAX_SENSORS 100
 #define MAX_CLIENTS 200
 #define BROKER_PORT 2000
 #define BUFF_SIZE 256
-#define DATE_CHAR_LIMIT 51
+#define SENSOR_CHAR_LIMIT 40
+#define DATE_CHAR_LIMIT 50
+#define VALUE_CHAR_LIMIT 12
 #define HOME "localhost"
 #define SENSOR_LOG_SIZE 10
 
@@ -31,7 +32,7 @@
 
 
 struct sensor{
-    int id;
+    char id[SENSOR_CHAR_LIMIT];
     char type[SENSOR_CHAR_LIMIT];
     char location[SENSOR_CHAR_LIMIT];
     char version[SENSOR_CHAR_LIMIT];
@@ -39,9 +40,9 @@ struct sensor{
 
 
 struct sensor_message{
-    int id;
+    char id[SENSOR_CHAR_LIMIT];
     char date[DATE_CHAR_LIMIT];
-    int value;
+    char value[VALUE_CHAR_LIMIT];
     char type[SENSOR_CHAR_LIMIT];
     char version[SENSOR_CHAR_LIMIT];
 };
@@ -67,12 +68,13 @@ struct sensor_arrays{
 /*---------------------------------------------------------------------------*/
 
 
-struct sensor* sensor_new(int id, char type[SENSOR_CHAR_LIMIT],
+struct sensor* sensor_new(char id[SENSOR_CHAR_LIMIT], char type[SENSOR_CHAR_LIMIT],
     char location[SENSOR_CHAR_LIMIT], char version[SENSOR_CHAR_LIMIT]);
 
 
-struct sensor_message* sensor_message_new(int id, char date[DATE_CHAR_LIMIT],
-    int value, char type[SENSOR_CHAR_LIMIT], char version[SENSOR_CHAR_LIMIT]);
+struct sensor_message* sensor_message_new(char id[SENSOR_CHAR_LIMIT],
+    char date[DATE_CHAR_LIMIT], char value[VALUE_CHAR_LIMIT], char type[SENSOR_CHAR_LIMIT],
+    char version[SENSOR_CHAR_LIMIT]);
 
 
 struct sensor_node* sensor_node_new(struct sensor* sensor, int socket);

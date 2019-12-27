@@ -2,17 +2,18 @@
 
 
 
-struct sensor* sensor_new(int id, char type[SENSOR_CHAR_LIMIT],
-                          char location[SENSOR_CHAR_LIMIT], char version[SENSOR_CHAR_LIMIT]){
+struct sensor* sensor_new(char id[SENSOR_CHAR_LIMIT], char type[SENSOR_CHAR_LIMIT],
+    char location[SENSOR_CHAR_LIMIT], char version[SENSOR_CHAR_LIMIT]){
 
     struct sensor* new = malloc(sizeof(struct sensor));
 
     if(new != NULL){
+        memset(new->id, '\0', SENSOR_CHAR_LIMIT);
         memset(new->type, '\0', SENSOR_CHAR_LIMIT);
         memset(new->location, '\0', SENSOR_CHAR_LIMIT);
         memset(new->version, '\0', SENSOR_CHAR_LIMIT);
 
-        new->id = id;
+        strcpy(new->id, id);
         strcpy(new->type, type);
         strcpy(new->location, location);
         strcpy(new->version, version);
@@ -22,19 +23,22 @@ struct sensor* sensor_new(int id, char type[SENSOR_CHAR_LIMIT],
 }
 
 
-struct sensor_message* sensor_message_new(int id, char date[DATE_CHAR_LIMIT],
-                                          int value, char type[SENSOR_CHAR_LIMIT], char version[SENSOR_CHAR_LIMIT]){
+struct sensor_message* sensor_message_new(char id[SENSOR_CHAR_LIMIT],
+    char date[DATE_CHAR_LIMIT], char value[VALUE_CHAR_LIMIT], char type[SENSOR_CHAR_LIMIT],
+    char version[SENSOR_CHAR_LIMIT]){
 
     struct sensor_message* new = malloc(sizeof(struct sensor_message));
 
     if(new != NULL){
+        memset(new->id, '\0', SENSOR_CHAR_LIMIT);
         memset(new->date, '\0', DATE_CHAR_LIMIT);
+        memset(new->value, '\0', VALUE_CHAR_LIMIT);
         memset(new->type, '\0', SENSOR_CHAR_LIMIT);
         memset(new->version, '\0', SENSOR_CHAR_LIMIT);
 
-        new->id = id;
+        strcpy(new->id, id);
         strcpy(new->date, date);
-        new->value = value;
+        strcpy(new->value, value);
         strcpy(new->type, type);
         strcpy(new->version, version);
     }
@@ -103,7 +107,7 @@ void insert_message(struct sensor_message* new, struct sensor_node* node){
 bool compare_merge(struct sensor_node* node1, struct sensor_node* node2, char c){
     switch(c){
         case 'I':
-            return node1->sensor->id <= node2->sensor->id;
+            return strcmp(node1->sensor->id, node2->sensor->id) <= 0;
 
 
         case 'T':

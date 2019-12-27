@@ -3,13 +3,10 @@
 
 void sensor_initialize(int socket, struct sensor* this_sensor){
 	char buffer[BUFF_SIZE];
-	char id_c[12];
 	memset(buffer, '\0', BUFF_SIZE);
-	memset(id_c, '\0', 12);
 
 	// build the message
-	snprintf(id_c, 12, "%d", this_sensor->id);
-	strcat(buffer, id_c);
+	strcat(buffer, this_sensor->id);
 	strcat(buffer, ";");
 	strcat(buffer, this_sensor->type);
 	strcat(buffer, ";");
@@ -35,7 +32,7 @@ void sensor_send(int socket, struct sensor* this_sensor){
 	strdate(date, DATE_CHAR_LIMIT);
 
     // build the message
-	snprintf(buffer, BUFF_SIZE, "%d", this_sensor->id);
+	strcat(buffer, this_sensor->id);
     strcat(buffer, ";");
     strcat(buffer, date);
     strcat(buffer, ";");
@@ -63,7 +60,7 @@ int main(int argc, char *argv[]){
     }
 
 	// creates a new sensor
-	struct sensor* this_sensor = sensor_new(atoi(argv[1]), argv[2],
+	struct sensor* this_sensor = sensor_new(argv[1], argv[2],
 		argv[3], argv[4]);
 
 	int server_socket;
@@ -102,7 +99,7 @@ int main(int argc, char *argv[]){
 
 	// connected
 
-	char buffer[BUFF_SIZE];
+	//char buffer[BUFF_SIZE];
 	bool flag = true;
 
     printf("+ Connected to broker.\n");
@@ -112,21 +109,15 @@ int main(int argc, char *argv[]){
 	send(server_socket, &authentication, sizeof(authentication), 0);
 	sensor_initialize(server_socket, this_sensor);
 
-	int pid = fork();
+	//TODO Receber firmwares updates. Uma opção aos forks seria um sistema de request periodico.
+	//int pid = fork();
 
 	// main loop
 	while(flag){
 		// send new data
-		if(pid == 0){
-			sleep(SENSOR_INTREVAL);
-			sensor_send(server_socket, this_sensor);
-		}
-		
-		//FIXME
-		else{
-			recv(server_socket, buffer, BUFF_SIZE, 0);
-			strcpy(this_sensor->version, buffer);
-		}
+		sleep(SENSOR_INTREVAL);
+		send(server_socket, &authentication, sizeof(authentication), 0);
+		sensor_send(server_socket, this_sensor);
 	}
 
 
