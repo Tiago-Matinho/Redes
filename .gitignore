@@ -1,3 +1,5 @@
 broker
 sensor
+public_cli
+admin_cli
 .vscode
