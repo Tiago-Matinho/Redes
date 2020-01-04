@@ -62,7 +62,9 @@ struct sensor_arrays{
 	struct sensor_node* type[MAX_SENSORS];
 	struct sensor_node* location[MAX_SENSORS];
 	struct sensor_node* version[MAX_SENSORS];
+	struct sensor_node* blocked[MAX_SENSORS];
 	int sensor_counter;
+    int blocked_counter;
 };
 
 /*---------------------------------------------------------------------------*/
@@ -95,6 +97,9 @@ void insert_message(struct sensor_message* new, struct sensor_node* node);
 void sensor_arrays_insert(struct sensor_node* new, struct sensor_arrays* order);
 
 
+struct sensor_node* sensor_arrays_remove(struct sensor_arrays* order, char id[SENSOR_CHAR_LIMIT]);
+
+
 /*---------------------------------------------------------------------------*/
 
 
@@ -109,4 +114,4 @@ struct public_cli{
 void strdate(char *buffer, int len);
 
 
-void strsplit(char original[BUFF_SIZE], int n, char result[n][SENSOR_CHAR_LIMIT]);
+void strsplit(char original[BUFF_SIZE], char c, int n, char result[n][SENSOR_CHAR_LIMIT]);

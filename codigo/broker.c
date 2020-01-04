@@ -11,14 +11,24 @@ void sensor_initialize(int new_client, struct sensor_arrays* arrays){
 
 	// split message
 	char split[4][SENSOR_CHAR_LIMIT];
-	strsplit(buffer, 4, split);
+	strsplit(buffer, ';',  4, split);
 
+	// checks if sensor is blocked
+	for(int i = 0; i < arrays->blocked_counter; i ++){
+		if(strcmp(split[0], arrays->blocked[i]->sensor->id) == 0){
+			printf("Sensor %s refused\n", split[0]);
+			// TODO send refuse
+			return;
+		}
+	}
+	
 	// create new sensor and node
 	struct sensor* new = sensor_new(split[0], split[1], split[2], split[3]);
 	struct sensor_node* new_node = sensor_node_new(new, new_client);
 
 	// insert into arrays
 	sensor_arrays_insert(new_node, arrays);
+	// TODO send confirmation
 }
 
 
@@ -31,7 +41,7 @@ void sensor_message(int socket, struct sensor_arrays* arrays){
 
 	// split data
 	char split[5][SENSOR_CHAR_LIMIT];
-	strsplit(buffer, 5, split);
+	strsplit(buffer, ';',  5, split);
 
 
 	// create a message struct
@@ -45,13 +55,13 @@ void sensor_message(int socket, struct sensor_arrays* arrays){
 	insert_message(message, node);
 
 	// prints
-	/*
 	printf("Sensor %d:\n", node->socket);
 	
 	for(int i = 0; i < node->log_counter; i++){
 		printf("%s %s %s %s %s\n", node->log[i]->id, node->log[i]->date,
 		node->log[i]->value, node->log[i]->type, node->log[i]->version);
 	}
+	/*
 	*/
 }
 
@@ -73,7 +83,7 @@ void public_cli_event(int socket, struct sensor_arrays* arrays){
 		memset(split[i], '\0', SENSOR_CHAR_LIMIT);
 
 	
-	strsplit(buffer, 2, split);
+	strsplit(buffer, ';',  2, split);
 
 	/*TODO visto que os arrays estão ordenados podemos procurar o primeiro elemento
 	duma maneira mais inteligente. Tambem pode-se deixar de precorrer o array quando
@@ -175,22 +185,28 @@ void public_cli_event(int socket, struct sensor_arrays* arrays){
 /*---------------------------------------------------------------------------*/
 
 
-void admin_cli_event(int socket, struct sensor_arrays* arrays){
+void admin_cli_event(int socket, struct sensor_arrays* arrays, fd_set* master){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 
 	// receive client request
 	recv(socket, buffer, BUFF_SIZE, 0);
 
-	char split[2][SENSOR_CHAR_LIMIT];
+	int spl = 2;
 
-	for(int i = 0; i < 2; i++)
+	if(buffer[0] == 'U')
+		spl = 3;
+
+	char split[spl][SENSOR_CHAR_LIMIT];
+
+	for(int i = 0; i < spl; i++)
 		memset(split[i], '\0', SENSOR_CHAR_LIMIT);
 
 	
-	strsplit(buffer, 2, split);
-	int comp;
+	strsplit(buffer, ';',  spl, split);
+	int comp, n;
 	memset(buffer, '\0', BUFF_SIZE);
+	struct sensor_node* temp = NULL;
 
 	switch(split[0][0]){
 		case 'R':
@@ -234,12 +250,43 @@ void admin_cli_event(int socket, struct sensor_arrays* arrays){
 		break;
 
 		case 'L':
+		
+		// send number of sensors
+		n = arrays->sensor_counter;
+		send(socket, &n, sizeof(n), 0);
+
+		for(int i = 0; i < n; i++){
+			memset(buffer, '\0', BUFF_SIZE);
+
+			// build the message
+			strcat(buffer, arrays->id[i]->sensor->id);
+			strcat(buffer, ";");
+			strcat(buffer, arrays->id[i]->sensor->type);
+			strcat(buffer, ";");
+			strcat(buffer, arrays->id[i]->sensor->location);
+			strcat(buffer, ";");
+			strcat(buffer, arrays->id[i]->sensor->version);
+
+			// send message
+			send(socket, buffer, BUFF_SIZE, 0);
+		}
+		printf("Admin client on socket %d sensor list request fulfilled.\n", socket);
 		break;
 
+		//TODO search function
 		case 'U':
+		for(int i = 0; i < arrays->sensor_counter; i++){
+			if(strcmp(arrays->id[i]->sensor->id, split[1]) == 0)
+				send(arrays->id[i]->socket, split[2], SENSOR_CHAR_LIMIT, 0);
+		}
 		break;
 
 		case 'D':
+		temp = sensor_arrays_remove(arrays, split[1]);
+		n = temp->socket;
+		printf("Sensor on socket %d removed.\n", socket);
+		close(n);
+		FD_CLR(n, master);
 		break;
 
 		default:
@@ -313,8 +360,6 @@ int main(int argc, char *argv[]){
 
 	struct sensor_arrays* arrays = sensor_arrays_new();
 
-//TODO enviar firmwares para os sensores
-
 
 //main loop
 	while(true){
@@ -385,7 +430,7 @@ int main(int argc, char *argv[]){
 						break;
 
 						case 'A':
-						admin_cli_event(current_sock, arrays);
+						admin_cli_event(current_sock, arrays, &master);
 						break;
 
 						default:

@@ -21,13 +21,78 @@ void last_reading(int socket, char id[BUFF_SIZE]){
     for(int i = 0; i < 5; i++)
         memset(split[i], '\0', SENSOR_CHAR_LIMIT);
 
-    strsplit(buffer, 5, split);
+    strsplit(buffer, ';', 5, split);
 
     printf("ID\tDATE\t\t\t\tTYPE\tVALUE\tVERSION\n");
     printf("%s\t%s\t%s\t%s\t%s\n", split[0], split[1], split[2], split[3], split[4]);
     
 }
 
+
+void list_all_sensors(int socket){
+	char buffer[BUFF_SIZE];
+	char split[4][SENSOR_CHAR_LIMIT];
+    memset(buffer, '\0', BUFF_SIZE);
+
+    // build message
+    strcat(buffer, "L;N");
+
+    // send request
+    send(socket, buffer, BUFF_SIZE, 0);
+
+	int counter = 0;
+    // recieves number of sensors
+    recv(socket, &counter, sizeof(counter), 0);
+
+	printf("ID\tTYPE\tLOCATION\tVERSION\n");
+
+	for(int i = 0; i < counter; i++){
+    	memset(buffer, '\0', BUFF_SIZE);
+		recv(socket, buffer, BUFF_SIZE, 0);
+
+		for(int k = 0; k < 4; k++)
+			memset(split[k], '\0', SENSOR_CHAR_LIMIT);
+
+		strsplit(buffer, ';', 4, split);
+
+		printf("%s\t%s\t%s\t\t%s\n", split[0], split[1], split[2], split[3]);
+	}
+}
+
+
+void update_sensor(int socket, char buffer[BUFF_SIZE]){
+	char split[2][SENSOR_CHAR_LIMIT];
+	for(int i = 0; i < 2; i++)
+		memset(split[i], '\0', SENSOR_CHAR_LIMIT);
+
+	strsplit(buffer, ' ', 2, split);
+
+	// build the message
+	memset(buffer, '\0', BUFF_SIZE);
+
+	strcat(buffer, "U;");
+	strcat(buffer, split[0]);
+	strcat(buffer, ";");
+	strcat(buffer, split[1]);
+
+	// send update
+	send(socket, buffer, BUFF_SIZE, 0);
+
+	printf("Update sent.\n");
+}
+
+
+void desactivate(int socket, char id[SENSOR_CHAR_LIMIT]){
+	char buffer[BUFF_SIZE];
+    memset(buffer, '\0', BUFF_SIZE);
+
+    // build message
+    strcat(buffer, "D;");
+    strcat(buffer, id);
+
+	// send request
+    send(socket, buffer, BUFF_SIZE, 0);
+}
 
 
 int main(int argc, char *argv[]){
@@ -82,6 +147,7 @@ int main(int argc, char *argv[]){
 
 	// main loop
 	while(flag){
+		//FIXME
         scanf(" %c %[^\n]s", &command, buffer);
 
 		// authenticates
@@ -94,16 +160,20 @@ int main(int argc, char *argv[]){
             break;
 
             case 'L':
-            //list_sensors(server_socket, buffer);
+            list_all_sensors(server_socket);
             break;
 
-			//TODO Update firmware
             case 'U':
+			update_sensor(server_socket, buffer);
             break;
 
-            //TODO desativar
             case 'D':
+			desactivate(server_socket, buffer);
             break;
+			
+			case 'E':
+			flag = false;
+			break;
 
             default:
 			break;

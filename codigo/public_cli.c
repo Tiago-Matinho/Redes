@@ -54,7 +54,7 @@ void last_reading(int socket, char location[SENSOR_CHAR_LIMIT]){
 
 		//printf("recebeu %s\n", buffer);
 
-		strsplit(buffer, 3, split);
+		strsplit(buffer, ';',  3, split);
 
 		printf("- %s %s %s\n", split[0], split[1], split[2]);
 	}

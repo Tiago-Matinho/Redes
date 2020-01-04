@@ -47,6 +47,19 @@ void sensor_send(int socket, struct sensor* this_sensor){
 	printf("%s data sent\n", date);
 }
 
+
+void update(int socket, struct sensor* this_sensor){
+	char new_version[SENSOR_CHAR_LIMIT];
+	memset(new_version, '\0', SENSOR_CHAR_LIMIT);
+
+	recv(socket, new_version, SENSOR_CHAR_LIMIT, 0);
+
+	strcpy(this_sensor->version, new_version);
+
+	printf("New update: %s\n", this_sensor->version);
+}
+
+
 int main(int argc, char *argv[]){
 
 
@@ -109,20 +122,25 @@ int main(int argc, char *argv[]){
 	send(server_socket, &authentication, sizeof(authentication), 0);
 	sensor_initialize(server_socket, this_sensor);
 
-	//TODO Receber firmwares updates. Uma opção aos forks seria um sistema de request periodico.
-	//int pid = fork();
+	//TODO Receber firmwares updates. Uma opção aos forks seria um select?
+	int pid = fork();
 
 	// main loop
 	while(flag){
 		// send new data
-		sleep(SENSOR_INTREVAL);
-		send(server_socket, &authentication, sizeof(authentication), 0);
-		sensor_send(server_socket, this_sensor);
+		if(pid == 0){
+			sleep(SENSOR_INTREVAL);
+			send(server_socket, &authentication, sizeof(authentication), 0);
+			sensor_send(server_socket, this_sensor);
+		}
+		//FIXME
+		else
+			update(server_socket, this_sensor);
 	}
 
 
+	printf("+ Disconnected.\n");
    	close(server_socket);
 	free(this_sensor);
-	printf("+ Disconnected.\n");
    	return 0;
 }

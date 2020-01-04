@@ -75,9 +75,11 @@ struct sensor_arrays* sensor_arrays_new(){
             new->type[i] = NULL;
             new->location[i] = NULL;
             new->version[i] = NULL;
+            new->blocked[i] = NULL;
         }
 
         new->sensor_counter = 0;
+        new->blocked_counter = 0;
     }
 
     return new;
@@ -231,6 +233,53 @@ void sensor_arrays_insert(struct sensor_node* new, struct sensor_arrays* order){
 }
 
 
+struct sensor_node* sensor_arrays_remove(struct sensor_arrays* order, char id[SENSOR_CHAR_LIMIT]){
+    struct sensor_node* temp = NULL;
+    int counter = order->sensor_counter;
+
+
+    for(int i = 0; i < counter; i++){
+
+        if(strcmp(id, order->id[i]->sensor->id) == 0){
+            temp = order->id[i];
+            order->id[i] = order->id[counter - 1];
+        }
+
+        if(strcmp(id, order->location[i]->sensor->id) == 0)
+            order->location[i] = order->location[counter - 1];
+        
+
+        if(strcmp(id, order->type[i]->sensor->id) == 0)
+            order->type[i] = order->type[counter - 1];
+        
+
+        if(strcmp(id, order->version[i]->sensor->id) == 0)
+            order->version[i] = order->version[counter - 1];
+        
+    }
+
+    order->blocked[order->blocked_counter] = temp;
+    order->sensor_counter--;
+    counter = order->sensor_counter;
+
+    printf("encontrei\n");
+
+    mergeSort(order->id, 0, counter, 'I');
+    mergeSort(order->type, 0, counter, 'T');
+    mergeSort(order->location, 0, counter, 'L');
+    mergeSort(order->version, 0, counter, 'V');
+
+    for(int j = 0; j < SENSOR_LOG_SIZE; j++)
+        free(temp->log[j]);
+
+    mergeSort(order->blocked, 0, order->blocked_counter, 'I');
+    order->blocked_counter++;
+    printf("teste\n");
+
+    return temp;
+}
+
+
 /*---------------------------------------------------------------------------*/
 
 
@@ -253,8 +302,8 @@ void strdate(char *buffer, int len){
 }
 
 
-void strsplit(char original[BUFF_SIZE], int n, char result[n][SENSOR_CHAR_LIMIT]){
-    char c;
+void strsplit(char original[BUFF_SIZE], char c, int n, char result[n][SENSOR_CHAR_LIMIT]){
+    char cur;
     int split_counter = 0;
     int counter = 0;
 
@@ -263,19 +312,19 @@ void strsplit(char original[BUFF_SIZE], int n, char result[n][SENSOR_CHAR_LIMIT]
 
 
     for(int i = 0; i < BUFF_SIZE; i++){
-        c = original[i];
+        cur = original[i];
 
-        if(c == '\0'){
+        if(cur == '\0'){
             return;
         }
 
-        else if(c == ';'){
+        else if(cur == c){
             split_counter++;
             counter = 0;
         }
 
         else{
-            result[split_counter][counter] = c;
+            result[split_counter][counter] = cur;
             counter++;
         }
     }
