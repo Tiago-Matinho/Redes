@@ -14,18 +14,16 @@
 #define h_addr h_addr_list[0]
 
 #define SENSOR_INTREVAL 5
-#define MAX_SENSORS 100
-#define MAX_CLIENTS 200
-#define BROKER_PORT 2000
-#define BUFF_SIZE 256
 #define SENSOR_CHAR_LIMIT 40
 #define DATE_CHAR_LIMIT 50
 #define VALUE_CHAR_LIMIT 12
-#define HOME "localhost"
 #define SENSOR_LOG_SIZE 10
-
-#define SOCK_TO_INDEX(i) ((i) - 3)
-#define INT_TO_CHAR(c) ((c) + '0')
+#define MAX_SENSORS 100
+#define MAX_PUB_CLI 200
+#define BUFF_SIZE 256
+#define COMAND_LIMIT 20
+#define BROKER_PORT 2000
+#define HOME "localhost"
 
 
 /*---------------------------------------------------------------------------*/
@@ -51,8 +49,11 @@ struct sensor_message{
 struct sensor_node{
     struct sensor* sensor;
     struct sensor_message* log[SENSOR_LOG_SIZE];
+    struct public_cli* subs[MAX_PUB_CLI];
     int log_counter;
-    int socket;
+    int sensor_socket;
+    int update_socket;
+    int subs_counter;
 };
 
 
@@ -79,7 +80,7 @@ struct sensor_message* sensor_message_new(char id[SENSOR_CHAR_LIMIT],
     char version[SENSOR_CHAR_LIMIT]);
 
 
-struct sensor_node* sensor_node_new(struct sensor* sensor, int socket);
+struct sensor_node* sensor_node_new(struct sensor* sensor, int sensor_socket);
 
 
 struct sensor_arrays* sensor_arrays_new();
@@ -91,21 +92,49 @@ struct sensor_arrays* sensor_arrays_new();
 void insert_message(struct sensor_message* new, struct sensor_node* node);
 
 
+void sub_sensor(struct sensor_node* sensor, struct public_cli* client);
+
+
 /*---------------------------------------------------------------------------*/
 
 
-void sensor_arrays_insert(struct sensor_node* new, struct sensor_arrays* order);
+void sensor_arrays_insert(struct sensor_node* new, struct sensor_arrays* arrays);
 
 
-struct sensor_node* sensor_arrays_remove(struct sensor_arrays* order, char id[SENSOR_CHAR_LIMIT]);
+struct sensor_node* sensor_arrays_remove(struct sensor_arrays* arrays, char id[SENSOR_CHAR_LIMIT]);
+
+
+struct sensor_node* id_search(struct sensor_node* array[MAX_SENSORS], int last,
+    char id[SENSOR_CHAR_LIMIT]);
 
 
 /*---------------------------------------------------------------------------*/
 
 
 struct public_cli{
-    
+    int socket;
+    int subscribe_socket;
 };
+
+
+struct pub_clients{
+    struct public_cli* array[MAX_PUB_CLI];
+};
+
+
+struct public_cli* public_cli_new(int socket);
+
+
+struct pub_clients* pub_clients_new();
+
+
+void pub_clients_add(struct pub_clients* array, struct public_cli* new);
+
+
+void pub_clients_remove(struct pub_clients* array, int socket);
+
+
+struct public_cli* pub_clients_get(struct pub_clients* array, int socket);
 
 
 /*---------------------------------------------------------------------------*/

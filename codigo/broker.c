@@ -1,7 +1,7 @@
 #include "header.h"
 
 
-
+// DONE
 void sensor_initialize(int new_client, struct sensor_arrays* arrays){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
@@ -13,13 +13,17 @@ void sensor_initialize(int new_client, struct sensor_arrays* arrays){
 	char split[4][SENSOR_CHAR_LIMIT];
 	strsplit(buffer, ';',  4, split);
 
-	// checks if sensor is blocked
-	for(int i = 0; i < arrays->blocked_counter; i ++){
-		if(strcmp(split[0], arrays->blocked[i]->sensor->id) == 0){
-			printf("Sensor %s refused\n", split[0]);
-			// TODO send refuse
-			return;
-		}
+	// checks if sensor is blocked or exist
+	struct sensor_node* temp1 = id_search(arrays->id, arrays->sensor_counter, split[0]);
+	struct sensor_node* temp2 = id_search(arrays->blocked, arrays->blocked_counter, split[0]);
+
+	char accepted = '\0';
+
+	if(temp1 != NULL || temp2 != NULL){
+		accepted = 'F';
+		printf("Rejected client on socket %d.\n", new_client);
+		send(new_client, &accepted, 1, 0);
+		return;
 	}
 	
 	// create new sensor and node
@@ -28,10 +32,37 @@ void sensor_initialize(int new_client, struct sensor_arrays* arrays){
 
 	// insert into arrays
 	sensor_arrays_insert(new_node, arrays);
-	// TODO send confirmation
+	
+
+	accepted = 'T';
+	send(new_client, &accepted, 1, 0);
 }
 
 
+//DONE
+void sensor_update_initialize(int new_socket, struct sensor_arrays* arrays){
+	char buffer[BUFF_SIZE];
+	memset(buffer, '\0', BUFF_SIZE);
+
+	// recieve message with sensor data
+	recv(new_socket, buffer, BUFF_SIZE, 0);
+
+	// split message
+	char split[4][SENSOR_CHAR_LIMIT];
+	strsplit(buffer, ';',  4, split);
+
+	struct sensor_node* temp1 = id_search(arrays->id, arrays->sensor_counter, split[0]);
+
+	if(temp1 == NULL){
+		printf("Update sensor socket ERROR: sensor %s not found\n", split[0]);
+		exit(1);
+	}
+
+	temp1->update_socket = new_socket;
+}
+
+
+//DONE
 void sensor_message(int socket, struct sensor_arrays* arrays){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
@@ -51,28 +82,67 @@ void sensor_message(int socket, struct sensor_arrays* arrays){
 	// get respective node
 	struct sensor_node* node = arrays->socket[socket];
 
-	// insert message into node array
+	// insert message into sensor message array
 	insert_message(message, node);
 
 	// prints
-	printf("Sensor %d:\n", node->socket);
+	/*
+	printf("Sensor %d:\n", node->sensor_socket);
 	
 	for(int i = 0; i < node->log_counter; i++){
 		printf("%s %s %s %s %s\n", node->log[i]->id, node->log[i]->date,
 		node->log[i]->value, node->log[i]->type, node->log[i]->version);
 	}
-	/*
 	*/
+
+	// send to subscribed clients
+	struct public_cli* subscriber = NULL;
+
+	for(int i = 0; i < node->subs_counter; i++){
+		subscriber = node->subs[i];
+
+		if(subscriber != NULL){
+			send(subscriber->subscribe_socket, buffer, BUFF_SIZE, 0);
+		}
+	}
 }
 
 
 /*---------------------------------------------------------------------------*/
 
 
-void public_cli_event(int socket, struct sensor_arrays* arrays){
+// DONE
+void public_cli_initialize(int socket, struct pub_clients* clients){
+	struct public_cli* new = public_cli_new(socket);
+
+	pub_clients_add(clients, new);
+	send(socket, &socket, sizeof(socket), 0);
+}
+
+
+// DONE
+void subscribe_initialize(int subscribe_socket, struct pub_clients* clients){
+	int socket;
+
+	recv(subscribe_socket, &socket, sizeof(socket), 0);
+
+	struct public_cli* temp = pub_clients_get(clients, socket);
+
+	if(temp == NULL){
+		printf("Something strange happened: temp is NULL\n");
+		exit(1);
+	}
+
+	temp->subscribe_socket = subscribe_socket;
+
+	send(subscribe_socket, &subscribe_socket, sizeof(subscribe_socket), 0);
+}
+
+
+// DONE
+void public_cli_event(int socket, struct sensor_arrays* arrays, struct pub_clients* clients){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
-	//char value[SENSOR_CHAR_LIMIT];
 
 	// receive client request
 	recv(socket, buffer, BUFF_SIZE, 0);
@@ -85,15 +155,10 @@ void public_cli_event(int socket, struct sensor_arrays* arrays){
 	
 	strsplit(buffer, ';',  2, split);
 
-	/*TODO visto que os arrays estão ordenados podemos procurar o primeiro elemento
-	duma maneira mais inteligente. Tambem pode-se deixar de precorrer o array quando
-	sabemos q não existe mais nada à frente.*/
+
 	int counter = 0, i = 0, start = 0;
 
-
-	switch(split[0][0]){
-		// sends locations of sensor of a certain type
-		case 'T':
+	if(strcmp(split[0], "list") == 0){
 		// walks sensor type array and counts
 		while(arrays->type[i] != NULL){
 			// if it's the last one
@@ -114,17 +179,14 @@ void public_cli_event(int socket, struct sensor_arrays* arrays){
 
 		for(i = start; i < start + counter; i ++){
 			if(arrays->type[i] != NULL){
-				// if it's the type we are looking after
 				// sends it's location
 				send(socket, arrays->type[i]->sensor->location, SENSOR_CHAR_LIMIT, 0);
 			}
 		}
 		printf("Public client on socket %d type request fulfilled.\n", socket);
-		break;
+	}
 
-		
-		// sends last reading of a location
-		case 'L':
+	else if(strcmp(split[0], "last") == 0){
 		// walks sensor location array and counts
 		while(arrays->location[i] != NULL){
 			// if it's the last one
@@ -169,22 +231,41 @@ void public_cli_event(int socket, struct sensor_arrays* arrays){
 			}
 		}
 		printf("Public client on socket %d locations request fulfilled.\n", socket);
-		break;
-
-		//TODO publish subscribe
-		case 'P':
-		break;
-
-		default:
-		break;
 	}
-	
+
+	else if(strcmp(split[0], "subscribe") == 0){
+		// walks sensor location array and counts
+		while(arrays->location[i] != NULL){
+			// if it's the last one
+			if(counter != 0 && strcmp(split[1], arrays->location[i]->sensor->location) != 0)
+				break;
+
+			if(strcmp(split[1], arrays->location[i]->sensor->location) == 0)
+				counter++;
+
+			if(counter == 1)
+				start = i;
+			
+			i++;
+		}
+
+		for(i = start; i < start + counter; i ++){
+			// add to subscribe list
+			if(arrays->location[i] != NULL)
+				sub_sensor(arrays->location[i], pub_clients_get(clients, socket));	
+		}
+		printf("Public client on socket %d subscribe request fulfilled.\n", socket);
+	}
+
+	else
+		printf("Something strange happened.\n");
 }
 
 
 /*---------------------------------------------------------------------------*/
 
 
+//DONE
 void admin_cli_event(int socket, struct sensor_arrays* arrays, fd_set* master){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
@@ -193,8 +274,9 @@ void admin_cli_event(int socket, struct sensor_arrays* arrays, fd_set* master){
 	recv(socket, buffer, BUFF_SIZE, 0);
 
 	int spl = 2;
-
-	if(buffer[0] == 'U')
+	
+	// update sends 2 args
+	if(buffer[0] == 'u')
 		spl = 3;
 
 	char split[spl][SENSOR_CHAR_LIMIT];
@@ -204,53 +286,47 @@ void admin_cli_event(int socket, struct sensor_arrays* arrays, fd_set* master){
 
 	
 	strsplit(buffer, ';',  spl, split);
-	int comp, n;
+	int n, a;
 	memset(buffer, '\0', BUFF_SIZE);
 	struct sensor_node* temp = NULL;
 
-	switch(split[0][0]){
-		case 'R':
-		//TODO pesquisa binária
+	// last reading
+	if(strcmp(split[0], "last") == 0){
+		// search for the sensor
+		temp = id_search(arrays->id, arrays->sensor_counter, split[1]);
+		// sensor not found
+		if(temp == NULL){
+			strcat(buffer, "sensor:");
+			strcat(buffer, ";");
+			strcat(buffer, split[1]);
+			strcat(buffer, ";");
+			strcat(buffer, "not found");
+			strcat(buffer, ";");
+			strcat(buffer, ";");
+		}
 
-		for(int i = 0; i < arrays->sensor_counter; i++){
-			if(arrays->id[i] != NULL){
-				comp = strcmp(arrays->id[i]->sensor->id, split[1]);
-
-				// found it
-				if(comp == 0){
-					// build the message
-					if(arrays->id[i]->log[0] != NULL){
-						strcat(buffer, arrays->id[i]->log[0]->id);
-						strcat(buffer, ";");
-						strcat(buffer, arrays->id[i]->log[0]->date);
-						strcat(buffer, ";");
-						strcat(buffer, arrays->id[i]->log[0]->type);
-						strcat(buffer, ";");
-						strcat(buffer, arrays->id[i]->log[0]->value);
-						strcat(buffer, ";");
-						strcat(buffer, arrays->id[i]->log[0]->version);
-					}
-					else{
-						strcat(buffer, "No;mensages;;;");
-					}
-
-					break;
-				}
-
-				// doesn't exist
-				if(comp > 0){
-					strcat(buffer, "Sensor;not;found;;");
-					break;
-				}
+		else{
+			if(temp->log[0] != NULL){
+				strcat(buffer, temp->log[0]->id);
+				strcat(buffer, ";");
+				strcat(buffer, temp->log[0]->date);
+				strcat(buffer, ";");
+				strcat(buffer, temp->log[0]->type);
+				strcat(buffer, ";");
+				strcat(buffer, temp->log[0]->value);
+				strcat(buffer, ";");
+				strcat(buffer, temp->log[0]->version);
+			}
+			else{
+				strcat(buffer, "No;mensages;;;");
 			}
 		}
 		// send message
 		send(socket, buffer, BUFF_SIZE, 0);
 		printf("Admin client on socket %d sensor log request fulfilled.\n", socket);
-		break;
+	}
 
-		case 'L':
-		
+	else if(strcmp(split[0], "list") == 0){
 		// send number of sensors
 		n = arrays->sensor_counter;
 		send(socket, &n, sizeof(n), 0);
@@ -271,28 +347,55 @@ void admin_cli_event(int socket, struct sensor_arrays* arrays, fd_set* master){
 			send(socket, buffer, BUFF_SIZE, 0);
 		}
 		printf("Admin client on socket %d sensor list request fulfilled.\n", socket);
-		break;
+	}
 
-		//TODO search function
-		case 'U':
-		for(int i = 0; i < arrays->sensor_counter; i++){
-			if(strcmp(arrays->id[i]->sensor->id, split[1]) == 0)
-				send(arrays->id[i]->socket, split[2], SENSOR_CHAR_LIMIT, 0);
+	else if(strcmp(split[0], "update") == 0){
+		temp = id_search(arrays->id, arrays->sensor_counter, split[1]);
+
+		if(temp == NULL)
+			strcat(buffer, "Sensor not found.");
+		
+
+		else{
+			if(strcmp(temp->sensor->version, split[2]) > 0)
+				strcat(buffer, "sensor is on a newer version.");
+			
+			else{
+				memset(temp->sensor->version, '\0', SENSOR_CHAR_LIMIT);
+				strcpy(temp->sensor->version, split[2]);
+				send(temp->update_socket, split[2], SENSOR_CHAR_LIMIT, 0);
+				strcat(buffer, "update sent.");
+			}
 		}
-		break;
+		
+		send(socket, buffer, BUFF_SIZE, 0);
+		printf("Admin client on socket %d sensor update request fulfilled.\n", socket);
+	}
 
-		case 'D':
-		temp = sensor_arrays_remove(arrays, split[1]);
-		n = temp->socket;
+	else if(strcmp(split[0], "desactivate") == 0){
+		temp = id_search(arrays->id, arrays->sensor_counter, split[1]);
+
+		if(temp == NULL)
+			strcat(buffer, "sensor not found.");
+		
+
+		else{
+			temp = sensor_arrays_remove(arrays, split[1]);
+			n = temp->sensor_socket;
+			a = temp->update_socket;
+			FD_CLR(n, master);
+			FD_CLR(a, master);
+			strcat(buffer, "sensor removed from broker.");
+		}
+
+		send(socket, buffer, BUFF_SIZE, 0);
 		printf("Sensor on socket %d removed.\n", socket);
 		close(n);
-		FD_CLR(n, master);
-		break;
-
-		default:
-		break;
-	
+		close(a);
 	}
+
+	else
+		printf("Something strange happened.\n");
 
 }
 
@@ -318,7 +421,7 @@ int main(int argc, char *argv[]){
 
 //Test if the socket was successfully created.
 	if(listening < 0) {
-		printf("ERROR, socket creation failed.\n Aborting.\n");
+		printf("ERROR, socket creation failed.\n");
 		exit(0);
 	
 	}
@@ -335,13 +438,13 @@ int main(int argc, char *argv[]){
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(BROKER_PORT);
 
-	if(bind(listening, (struct sockaddr *) &address, sizeof(address)) < 0) {
+	if(bind(listening, (struct sockaddr *) &address, sizeof(address)) < 0){
 		printf("Socket not bound.\n");
 		exit(EXIT_FAILURE);
 	}
 
 //Setting the server to listen the client.
-	if(listen(listening, 10) < 0) {
+	if(listen(listening, 10) < 0){
 		printf("Listen failed.\n");
 		exit(EXIT_FAILURE);
 	}
@@ -359,6 +462,7 @@ int main(int argc, char *argv[]){
 	char authentication;
 
 	struct sensor_arrays* arrays = sensor_arrays_new();
+	struct pub_clients* clients = pub_clients_new();
 
 
 //main loop
@@ -391,12 +495,23 @@ int main(int argc, char *argv[]){
 
 					switch(authentication){
 						case 'S':
-						sensor_initialize(new_client,arrays);
+						sensor_initialize(new_client, arrays);
 						printf("new sensor connected on %d\n", new_client);
 						break;
 
+						case 'U':
+						sensor_update_initialize(new_client, arrays);
+						printf("new update sensor connected on %d\n", new_client);
+						break;
+
 						case 'C':
+						public_cli_initialize(new_client, clients);
 						printf("new public client connected on %d\n", new_client);
+						break;
+
+						case 'P':
+						subscribe_initialize(new_client, clients);
+						printf("new public client subscribe channel connected on %d\n", new_client);
 						break;
 
 						case 'A':
@@ -410,12 +525,14 @@ int main(int argc, char *argv[]){
 
 					FD_SET(new_client, &master);
 
+					// update counter
 					if(sock_counter < new_client){
 						sock_counter = new_client;
 					}
 
 				}
 
+				// handle messages
 				else{
 
 					recv(current_sock, &authentication, 1, 0);
@@ -426,7 +543,7 @@ int main(int argc, char *argv[]){
 						break;
 
 						case 'C':
-						public_cli_event(current_sock, arrays);
+						public_cli_event(current_sock, arrays, clients);
 						break;
 
 						case 'A':

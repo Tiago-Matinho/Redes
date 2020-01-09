@@ -5,7 +5,7 @@ void last_reading(int socket, char id[BUFF_SIZE]){
     memset(buffer, '\0', BUFF_SIZE);
 
     // build message
-    strcat(buffer, "R;");
+    strcat(buffer, "last;");
     strcat(buffer, id);
 
     // send request
@@ -23,8 +23,8 @@ void last_reading(int socket, char id[BUFF_SIZE]){
 
     strsplit(buffer, ';', 5, split);
 
-    printf("ID\tDATE\t\t\t\tTYPE\tVALUE\tVERSION\n");
-    printf("%s\t%s\t%s\t%s\t%s\n", split[0], split[1], split[2], split[3], split[4]);
+    printf("\nID\tDATE\t\t\t\tTYPE\tVALUE\tVERSION\n");
+    printf("%s\t%s\t%s\t%s\t%s\n\n", split[0], split[1], split[2], split[3], split[4]);
     
 }
 
@@ -35,7 +35,7 @@ void list_all_sensors(int socket){
     memset(buffer, '\0', BUFF_SIZE);
 
     // build message
-    strcat(buffer, "L;N");
+    strcat(buffer, "list;");
 
     // send request
     send(socket, buffer, BUFF_SIZE, 0);
@@ -44,7 +44,7 @@ void list_all_sensors(int socket){
     // recieves number of sensors
     recv(socket, &counter, sizeof(counter), 0);
 
-	printf("ID\tTYPE\tLOCATION\tVERSION\n");
+	printf("\nID\tTYPE\tLOCATION\tVERSION\n");
 
 	for(int i = 0; i < counter; i++){
     	memset(buffer, '\0', BUFF_SIZE);
@@ -57,6 +57,7 @@ void list_all_sensors(int socket){
 
 		printf("%s\t%s\t%s\t\t%s\n", split[0], split[1], split[2], split[3]);
 	}
+	printf("\n");
 }
 
 
@@ -70,7 +71,7 @@ void update_sensor(int socket, char buffer[BUFF_SIZE]){
 	// build the message
 	memset(buffer, '\0', BUFF_SIZE);
 
-	strcat(buffer, "U;");
+	strcat(buffer, "update;");
 	strcat(buffer, split[0]);
 	strcat(buffer, ";");
 	strcat(buffer, split[1]);
@@ -78,7 +79,12 @@ void update_sensor(int socket, char buffer[BUFF_SIZE]){
 	// send update
 	send(socket, buffer, BUFF_SIZE, 0);
 
-	printf("Update sent.\n");
+	memset(buffer, '\0', BUFF_SIZE);
+	// recieve result
+	recv(socket, buffer, BUFF_SIZE, 0);
+
+	// print result
+	printf("\n%s\n", buffer);
 }
 
 
@@ -87,11 +93,18 @@ void desactivate(int socket, char id[SENSOR_CHAR_LIMIT]){
     memset(buffer, '\0', BUFF_SIZE);
 
     // build message
-    strcat(buffer, "D;");
+    strcat(buffer, "desactivate;");
     strcat(buffer, id);
 
 	// send request
     send(socket, buffer, BUFF_SIZE, 0);
+	
+	memset(buffer, '\0', BUFF_SIZE);
+	// recieve result
+	recv(socket, buffer, BUFF_SIZE, 0);
+
+	// print result
+	printf("\n%s\n", buffer);
 }
 
 
@@ -143,41 +156,42 @@ int main(int argc, char *argv[]){
 	char authentication = 'A';
 	send(server_socket, &authentication, sizeof(authentication), 0);
 
-    char command;
+    char command[COMAND_LIMIT];
 
 	// main loop
 	while(flag){
-		//FIXME
-        scanf(" %c %[^\n]s", &command, buffer);
+		memset(command, '\0', COMAND_LIMIT);
+        scanf("%s", command);
 
 		// authenticates
 		send(server_socket, &authentication, sizeof(authentication), 0);
 
-        switch(command){
-
-            case 'R':
-			last_reading(server_socket, buffer);
-            break;
-
-            case 'L':
+		if(strcmp(command, "list") == 0)
             list_all_sensors(server_socket);
-            break;
 
-            case 'U':
+		else if(strcmp(command, "last") == 0){
+            scanf(" %[^\n]s", buffer);
+			last_reading(server_socket, buffer);
+		}
+
+		else if(strcmp(command, "update") == 0){
+            scanf(" %[^\n]s", buffer);
 			update_sensor(server_socket, buffer);
-            break;
+		}
 
-            case 'D':
+		else if(strcmp(command, "desactivate") == 0){
+            scanf(" %[^\n]s", buffer);
 			desactivate(server_socket, buffer);
-            break;
-			
-			case 'E':
-			flag = false;
-			break;
+		}
 
-            default:
-			break;
-        }
+		else if(strcmp(command, "exit") == 0)
+			flag = false;
+		
+		else if(strcmp(command, "help") == 0)
+			printf("help.\n");
+
+		else
+			printf("Command not found.\n");
 	}
 
 

@@ -47,17 +47,21 @@ struct sensor_message* sensor_message_new(char id[SENSOR_CHAR_LIMIT],
 }
 
 
-struct sensor_node* sensor_node_new(struct sensor* sensor, int socket){
+struct sensor_node* sensor_node_new(struct sensor* sensor, int sensor_socket){
 
     struct sensor_node* new = malloc(sizeof(struct sensor_node));
 
     if(new != NULL){
         new->sensor = sensor;
-        new->socket = socket;
+        new->sensor_socket = sensor_socket;
         new->log_counter = 0;
+        new->subs_counter = 0;
 
         for(int i = 0; i < SENSOR_LOG_SIZE; i++)
             new->log[i] = NULL;
+
+        for(int k = 0; k < MAX_PUB_CLI; k++)
+            new->subs[k] = NULL;
     }
 
     return new;
@@ -103,6 +107,12 @@ void insert_message(struct sensor_message* new, struct sensor_node* node){
 }
 
 
+void sub_sensor(struct sensor_node* sensor, struct public_cli* client){
+    sensor->subs[sensor->subs_counter] = client;
+    sensor->subs_counter++;
+}
+
+
 /*---------------------------------------------------------------------------*/
 
 
@@ -133,8 +143,7 @@ bool compare_merge(struct sensor_node* node1, struct sensor_node* node2, char c)
 // Merges two subarrays of arr[].
 // First subarray is arr[l..m]
 // Second subarray is arr[m+1..r]
-void merge(struct sensor_node* arr[], int l, int m, int r, char c)
-{
+void merge(struct sensor_node* arr[], int l, int m, int r, char c){
     int i, j, k;
     int n1 = m - l + 1;
     int n2 =  r - m;
@@ -187,10 +196,10 @@ void merge(struct sensor_node* arr[], int l, int m, int r, char c)
     }
 }
 
+
 /* l is for left index and r is right index of the
    sub-array of arr to be sorted */
-void mergeSort(struct sensor_node* arr[], int l, int r, char c)
-{
+void mergeSort(struct sensor_node* arr[], int l, int r, char c){
     if (l < r)
     {
         // Same as (l+r)/2, but avoids overflow for
@@ -206,10 +215,9 @@ void mergeSort(struct sensor_node* arr[], int l, int r, char c)
 }
 
 
+void sensor_arrays_insert(struct sensor_node* new, struct sensor_arrays* arrays){
 
-void sensor_arrays_insert(struct sensor_node* new, struct sensor_arrays* order){
-
-    int counter = order->sensor_counter;
+    int counter = arrays->sensor_counter;
 
     if(counter + 1 == MAX_SENSORS){
         printf("Too many sensors.\n");
@@ -217,72 +225,155 @@ void sensor_arrays_insert(struct sensor_node* new, struct sensor_arrays* order){
     }
 
     if(new != NULL){
-        order->socket[new->socket] = new;
-        order->id[counter] = new;
-        order->type[counter] = new;
-        order->location[counter] = new;
-        order->version[counter] = new;
+        arrays->socket[new->sensor_socket] = new;
+        arrays->id[counter] = new;
+        arrays->type[counter] = new;
+        arrays->location[counter] = new;
+        arrays->version[counter] = new;
     }
 
 
-    mergeSort(order->id, 0, counter, 'I');
-    mergeSort(order->type, 0, counter, 'T');
-    mergeSort(order->location, 0, counter, 'L');
-    mergeSort(order->version, 0, counter, 'V');
-    order->sensor_counter++;
+    mergeSort(arrays->id, 0, counter, 'I');
+    mergeSort(arrays->type, 0, counter, 'T');
+    mergeSort(arrays->location, 0, counter, 'L');
+    mergeSort(arrays->version, 0, counter, 'V');
+    arrays->sensor_counter++;
 }
 
 
-struct sensor_node* sensor_arrays_remove(struct sensor_arrays* order, char id[SENSOR_CHAR_LIMIT]){
+struct sensor_node* sensor_arrays_remove(struct sensor_arrays* arrays, char id[SENSOR_CHAR_LIMIT]){
     struct sensor_node* temp = NULL;
-    int counter = order->sensor_counter;
+    int counter = arrays->sensor_counter;
 
 
     for(int i = 0; i < counter; i++){
 
-        if(strcmp(id, order->id[i]->sensor->id) == 0){
-            temp = order->id[i];
-            order->id[i] = order->id[counter - 1];
+        if(strcmp(id, arrays->id[i]->sensor->id) == 0){
+            temp = arrays->id[i];
+            arrays->id[i] = arrays->id[counter - 1];
         }
 
-        if(strcmp(id, order->location[i]->sensor->id) == 0)
-            order->location[i] = order->location[counter - 1];
+        if(strcmp(id, arrays->location[i]->sensor->id) == 0)
+            arrays->location[i] = arrays->location[counter - 1];
         
 
-        if(strcmp(id, order->type[i]->sensor->id) == 0)
-            order->type[i] = order->type[counter - 1];
+        if(strcmp(id, arrays->type[i]->sensor->id) == 0)
+            arrays->type[i] = arrays->type[counter - 1];
         
 
-        if(strcmp(id, order->version[i]->sensor->id) == 0)
-            order->version[i] = order->version[counter - 1];
+        if(strcmp(id, arrays->version[i]->sensor->id) == 0)
+            arrays->version[i] = arrays->version[counter - 1];
         
     }
 
-    order->blocked[order->blocked_counter] = temp;
-    order->sensor_counter--;
-    counter = order->sensor_counter;
+    arrays->blocked[arrays->blocked_counter] = temp;
+    arrays->sensor_counter--;
+    counter = arrays->sensor_counter;
 
-    printf("encontrei\n");
-
-    mergeSort(order->id, 0, counter, 'I');
-    mergeSort(order->type, 0, counter, 'T');
-    mergeSort(order->location, 0, counter, 'L');
-    mergeSort(order->version, 0, counter, 'V');
+    mergeSort(arrays->id, 0, counter, 'I');
+    mergeSort(arrays->type, 0, counter, 'T');
+    mergeSort(arrays->location, 0, counter, 'L');
+    mergeSort(arrays->version, 0, counter, 'V');
 
     for(int j = 0; j < SENSOR_LOG_SIZE; j++)
         free(temp->log[j]);
 
-    mergeSort(order->blocked, 0, order->blocked_counter, 'I');
-    order->blocked_counter++;
-    printf("teste\n");
+    mergeSort(arrays->blocked, 0, arrays->blocked_counter, 'I');
+    arrays->blocked_counter++;
 
     return temp;
+}
+
+
+struct sensor_node* id_search(struct sensor_node* array[MAX_SENSORS], int last,
+    char id[SENSOR_CHAR_LIMIT]){
+    
+    for(int i = 0; i < last; i++){
+        if(array[i] != NULL){
+            if(strcmp(id, array[i]->sensor->id) == 0)
+                return array[i];
+        }
+    }
+    return NULL;
+
+    //binary search FIXME
+    /*
+    int l, r, m;
+
+    if(last == 0)
+        return NULL;
+
+    l = 0;
+    r = last - 1;
+
+    while(l <= r){
+        m = l + (r - l) / 2;
+
+        if(array[m] != NULL){
+            if(strcmp(array[m]->sensor->id, id) == 0)
+                return array[m];
+
+            if(strcmp(array[m]->sensor->id, id) < 0)
+                l = m + 1;
+            
+            else
+                r = m - 1;
+        }
+    }
+    return NULL;
+    */
 }
 
 
 /*---------------------------------------------------------------------------*/
 
 
+struct public_cli* public_cli_new(int socket){
+    struct public_cli* new = malloc(sizeof(struct public_cli));
+
+    if(new != NULL){
+        new->socket = socket;
+        new->subscribe_socket = -1;
+    }
+    return new;
+}
+
+
+struct pub_clients* pub_clients_new(){
+    struct pub_clients* new = malloc(sizeof(struct pub_clients));
+
+    if(new != NULL)
+        for(int i = 0; i < MAX_PUB_CLI; i++)
+            new->array[i] = NULL;
+    
+    return new;
+}
+
+
+void pub_clients_add(struct pub_clients* array, struct public_cli* new){
+    if(new == NULL || array == NULL)
+        return;
+
+    // saves client on respectives socket
+    array->array[new->socket] = new;
+}
+
+
+void pub_clients_remove(struct pub_clients* array, int socket){
+    if(array == NULL)
+        return;
+
+    if(array->array[socket] != NULL)
+        free(array->array[socket]);
+}
+
+
+struct public_cli* pub_clients_get(struct pub_clients* array, int socket){
+    if(array == NULL)
+        return NULL;
+
+    return array->array[socket];
+}
 
 
 /*---------------------------------------------------------------------------*/
