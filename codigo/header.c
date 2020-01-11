@@ -1,4 +1,4 @@
-#include "header.h"
+#include "library.h"
 
 
 
@@ -419,4 +419,26 @@ void strsplit(char original[BUFF_SIZE], char c, int n, char result[n][SENSOR_CHA
             counter++;
         }
     }
+}
+
+
+/*---------------------------------------------------------------------------*/
+
+
+void free_sensor_arrays(struct sensor_arrays* arrays){
+    if(arrays == NULL)
+        return;
+
+    for(int i = 0; i < arrays->sensor_counter; i++){
+        if(arrays->id[i] != NULL){
+            for(int k = 0; k < arrays->id[i]->log_counter; k++)
+                free(arrays->id[i]->log[0]);
+
+            for(int j = 0; j < arrays->id[i]->subs_counter; j++)
+                free(arrays->id[i]->subs[j]);
+
+            free(arrays->id[i]);
+        }
+    }
+    free(arrays);
 }
