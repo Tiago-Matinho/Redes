@@ -188,9 +188,6 @@ void subscribe_initialize(int subscribe_socket,
 
 	// links the socket
 	temp->subscribe_socket = subscribe_socket;
-
-	send(subscribe_socket, &subscribe_socket,
-		sizeof(subscribe_socket), 0);
 }
 
 

@@ -1,11 +1,20 @@
-#include "header.h"
+#include "library.h"
 
+/*
+Initializes sensor on broker side.
 
-void sensor_initialize(int sensor_socket, int update_socket, struct sensor* this_sensor){
+To do so the sensor sends it's information (ID, TYPE, LOCATION, VERSION).
+
+Then a struct sensor is created on the broker side.
+*/
+void sensor_initialize(int sensor_socket, int update_socket,
+	struct sensor* this_sensor){
+
 	char sensor_authentication = 'S';
 	
-	// type of connection is from sensor
-	send(sensor_socket, &sensor_authentication, sizeof(sensor_authentication), 0);
+	// authenticates
+	send(sensor_socket, &sensor_authentication,
+		sizeof(sensor_authentication), 0);
 
 	// build the message
 	char buffer[BUFF_SIZE];
@@ -19,7 +28,7 @@ void sensor_initialize(int sensor_socket, int update_socket, struct sensor* this
 	strcat(buffer, ";");
 	strcat(buffer, this_sensor->version);
 
-
+	/ send message
 	send(sensor_socket, buffer, BUFF_SIZE, 0);
 
 	char accepted ='\0';
@@ -41,12 +50,19 @@ void sensor_initialize(int sensor_socket, int update_socket, struct sensor* this
 }
 
 
+/*
+Initializes update sensor socket on broker side.
 
+To do so the sensor sends it's information (ID, TYPE, LOCATION, VERSION).
+
+Then the broker searches for the respective sensor.
+*/
 void update_initialize(int update_socket, struct sensor* this_sensor){
 	char update_authentication = 'U';
 	
 	// type of connection is from update
-	send(update_socket, &update_authentication, sizeof(update_authentication), 0);
+	send(update_socket, &update_authentication,
+		sizeof(update_authentication), 0);
 
 	// build the message
 	char buffer[BUFF_SIZE];
@@ -60,13 +76,18 @@ void update_initialize(int update_socket, struct sensor* this_sensor){
 	strcat(buffer, ";");
 	strcat(buffer, this_sensor->version);
 
-
+	// sends the message
 	send(update_socket, buffer, BUFF_SIZE, 0);
 
 	printf("Update socket set up.\n\n");
 }
 
 
+/*
+Sends a new reading from the sensor to the broker.
+
+The values are randomly generated.
+*/
 void sensor_send(int socket, struct sensor* this_sensor){
 	char buffer[BUFF_SIZE];
     char date[DATE_CHAR_LIMIT];
@@ -77,8 +98,8 @@ void sensor_send(int socket, struct sensor* this_sensor){
 
     // get new values
     int value = rand() % 101; // random
-	snprintf(value_c, SENSOR_CHAR_LIMIT, "%d", value);
-	strdate(date, DATE_CHAR_LIMIT);
+	snprintf(value_c, SENSOR_CHAR_LIMIT, "%d", value); // to string
+	strdate(date, DATE_CHAR_LIMIT);	// get date
 
     // build the message
 	strcat(buffer, this_sensor->id);
@@ -91,12 +112,16 @@ void sensor_send(int socket, struct sensor* this_sensor){
     strcat(buffer, ";");
     strcat(buffer, this_sensor->version);
 
-
+    // send message
     send(socket, buffer, BUFF_SIZE, 0);
 	printf("+ %s data sent\n", date);
 }
 
 
+/*
+Saves the update that was received. In this implementation we only
+change the version value.
+*/
 void update(int socket, struct sensor* this_sensor){
 	char new_version[SENSOR_CHAR_LIMIT];
 	memset(new_version, '\0', SENSOR_CHAR_LIMIT);
@@ -105,6 +130,7 @@ void update(int socket, struct sensor* this_sensor){
 
 	n = recv(socket, new_version, SENSOR_CHAR_LIMIT, 0);
 
+	// crash proof
 	if(n <= 0){
 		if (n == 0){
 			printf("+ Disconected\n");
@@ -120,7 +146,8 @@ void update(int socket, struct sensor* this_sensor){
 
 	// refuse update
 	else
-		printf("+ Update: %s refused. Sensor is on a newer version\n", new_version);
+		printf("+ Update: %s refused. Sensor is on a newer version\n",
+			new_version);
 	
 }
 
@@ -149,14 +176,14 @@ int main(int argc, char *argv[]){
    
 // create sensor socket
 	sensor_socket = socket(AF_INET, SOCK_STREAM, 0);
-	if (sensor_socket < 0){
+	if(sensor_socket < 0){
 		perror("ERROR opening sensor socket");
 		exit(1);
    	}
 
 // create update socket
 	update_socket = socket(AF_INET, SOCK_STREAM, 0);
-	if (update_socket < 0){
+	if(update_socket < 0){
 		perror("ERROR opening update socket");
 		exit(1);
    	}
@@ -171,12 +198,14 @@ int main(int argc, char *argv[]){
 
 	bzero((char *) &serv_addr, sizeof(serv_addr));
 	serv_addr.sin_family = AF_INET;
-	bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
+	bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr,
+		server->h_length);
 	serv_addr.sin_port = htons(BROKER_PORT);
 
 	
 // connecting to broker
-	if(connect(sensor_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0){
+	if(connect(sensor_socket, (struct sockaddr*)&serv_addr,
+		sizeof(serv_addr)) < 0){
 		perror("ERROR sensor connecting");
 		exit(2);
    	}
@@ -185,7 +214,8 @@ int main(int argc, char *argv[]){
 	sensor_initialize(sensor_socket, update_socket, this_sensor);
     
 
-	if(connect(update_socket, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0){
+	if(connect(update_socket, (struct sockaddr*)&serv_addr,
+		sizeof(serv_addr)) < 0){
 		perror("ERROR update connecting");
 		exit(2);
    	}
@@ -209,6 +239,7 @@ int main(int argc, char *argv[]){
 
 	FD_SET(update_socket, &master);
 
+	// set's the intreval of data to 10s
 	struct timeval time;
 	time.tv_sec = SENSOR_INTREVAL;
 	time.tv_usec = 0;
@@ -223,18 +254,19 @@ int main(int argc, char *argv[]){
 			exit(1);
 		}
 
-		// something new to read
+		// something new to read on update socket
 		if(FD_ISSET(update_socket, &copy))
-			update(update_socket, this_sensor); //TEST
+			update(update_socket, this_sensor);
 		
 
-		// send new data
+		// send new reading
 		if(time.tv_sec == 0 && time.tv_usec == 0){
 			// authenticates
-			send(sensor_socket, &sensor_authentication, sizeof(sensor_authentication), 0);
+			send(sensor_socket, &sensor_authentication,
+				sizeof(sensor_authentication), 0);
 			sensor_send(sensor_socket, this_sensor);
 
-			time.tv_sec = SENSOR_INTREVAL;
+			time.tv_sec = SENSOR_INTREVAL;	//reset time
 		}
 		
 		
