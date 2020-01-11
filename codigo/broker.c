@@ -15,7 +15,7 @@ bool sensor_initialize(int new_client, struct sensor_arrays* arrays){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 
-	// recieve message with sensor data
+	// receive message with sensor data
 	recv(new_client, buffer, BUFF_SIZE, 0);
 
 	// split message
@@ -57,7 +57,7 @@ bool sensor_initialize(int new_client, struct sensor_arrays* arrays){
 
 /*
 When a new sensor connects it will need a new socket so that the sensor
-can recieve updates.
+can receive updates.
 
 In order to know what sensor this update socket corresponds the sensor
 sends it's information and links the update socket to the already
@@ -69,7 +69,7 @@ void sensor_update_initialize(int new_socket,
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 
-	// recieve message with sensor data
+	// receive message with sensor data
 	recv(new_socket, buffer, BUFF_SIZE, 0);
 
 	// split message
@@ -103,7 +103,7 @@ void sensor_message(int socket, struct sensor_arrays* arrays){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 
-	// recieve message data
+	// receive message data
 	recv(socket, buffer, BUFF_SIZE, 0);
 
 	// split data
@@ -121,15 +121,6 @@ void sensor_message(int socket, struct sensor_arrays* arrays){
 	// insert message into sensor message array
 	insert_message(message, node);
 
-	// prints
-	/*
-	printf("Sensor %d:\n", node->sensor_socket);
-	
-	for(int i = 0; i < node->log_counter; i++){
-		printf("%s %s %s %s %s\n", node->log[i]->id, node->log[i]->date,
-		node->log[i]->value, node->log[i]->type, node->log[i]->version);
-	}
-	*/
 
 	// send to subscribed clients
 	struct public_cli* subscriber = NULL;
@@ -174,7 +165,7 @@ void subscribe_initialize(int subscribe_socket,
 	
 	int socket;
 
-	// recieves the socket of the public client.
+	// receives the socket of the public client.
 	// (Like an ID) so that the broker can link the two.
 	recv(subscribe_socket, &socket, sizeof(socket), 0);
 
@@ -266,7 +257,7 @@ void public_cli_event(int socket, struct sensor_arrays* arrays,
 	}
 
 	/*
-	sends the last messages recieved from sensors from the requested
+	sends the last messages received from sensors from the requested
 	location
 	*/
 	else if(strcmp(split[0], "last") == 0){
@@ -356,8 +347,7 @@ void public_cli_event(int socket, struct sensor_arrays* arrays,
 		}
 		// sends number of sensors the public client subscribed to 
 		send(socket, &counter, sizeof(counter), 0);
-		printf("Public client on socket %d subscribe request
-			fulfilled.\n", socket);
+		printf("Public client on socket %d subscribe request fulfilled.\n", socket);
 	}
 
 	else
@@ -372,7 +362,7 @@ void public_cli_event(int socket, struct sensor_arrays* arrays,
 Handles all the admin client requests.
 
 The admin sends the requests following the structure:
-- for last reading and desactivate: "command;arg".
+- for last reading and disconnect: "command;arg".
 - for list all the sensors: "command".
 - for update: "command;arg1;arg2".
 
@@ -440,8 +430,7 @@ void admin_cli_event(int socket, struct sensor_arrays* arrays,
 		}
 		// sends message
 		send(socket, buffer, BUFF_SIZE, 0);
-		printf("Admin client on socket %d sensor log request
-			fulfilled.\n", socket);
+		printf("Admin client on socket %d sensor log request fulfilled.\n", socket);
 	}
 
 	// sends all the information about all the sensors connected
@@ -469,8 +458,7 @@ void admin_cli_event(int socket, struct sensor_arrays* arrays,
 			// send message
 			send(socket, buffer, BUFF_SIZE, 0);
 		}
-		printf("Admin client on socket %d sensor list request
-			fulfilled.\n", socket);
+		printf("Admin client on socket %d sensor list request fulfilled.\n", socket);
 	}
 
 	// sends update to the requested sensor
@@ -516,12 +504,11 @@ void admin_cli_event(int socket, struct sensor_arrays* arrays,
 		}
 		// sends number of sensors updated
 		send(socket, &a, sizeof(a), 0);
-		printf("Admin client on socket %d sensor update
-			request fulfilled.\n", socket);
+		printf("Admin client on socket %d sensor update request fulfilled.\n", socket);
 	}
 
 	// closes the sensor socket and add's to the blocked list
-	else if(strcmp(split[0], "desactivate") == 0){
+	else if(strcmp(split[0], "disconnect") == 0){
 		temp = id_search(arrays->id, arrays->sensor_counter,
 			split[1]);
 
@@ -693,8 +680,7 @@ public client, subscribe, admin)
 						public client
 						*/
 						subscribe_initialize(new_client, clients);
-						printf("new public client subscribe channel
-							connected on %d\n", new_client);
+						printf("new public client subscribe channel connected on %d\n", new_client);
 						break;
 
 						case 'A':

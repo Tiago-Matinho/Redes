@@ -4,7 +4,7 @@
 Initializes client on broker side.
 
 To do so the public client send an authentication key ('C') then
-recieves wich socket was assingned to the public client. This will
+receives wich socket was assingned to the public client. This will
 then be sent to the broker so that the broker knows what client's
 socket corresponds to wich client subscribe socket.
 */
@@ -15,7 +15,7 @@ void initialize_client(int* this_socket, int client_socket){
 	// authenticates
 	send(client_socket, &authentication, sizeof(authentication), 0);
 
-	// recieves socket on broker side. (Used as an ID). 
+	// receives socket on broker side. (Used as an ID). 
 	recv(client_socket, this_socket, sizeof(*this_socket), 0);
 }
 
@@ -60,13 +60,13 @@ void list_locations(int socket, char type[SENSOR_CHAR_LIMIT]){
 	// sends request
 	send(socket, buffer, BUFF_SIZE, 0);
 
-	// recieves number of sensors that match
+	// receives number of sensors that match
 	int n = 0;
 	recv(socket, &n, sizeof(n), 0);
 
 	printf("\n+ Sensors found: %d\n", n);
 
-	// recieve all the locations
+	// receive all the locations
 	for(int i = 0; i < n; i++){
 		recv(socket, buffer, SENSOR_CHAR_LIMIT, 0);
 		printf("+ %s\n", buffer);
@@ -95,21 +95,21 @@ void last_reading(int socket, char location[SENSOR_CHAR_LIMIT]){
 	// sends request
 	send(socket, buffer, BUFF_SIZE, 0);
 
-	// recieves number of sensors that match
+	// receives number of sensors that match
 	int n = 0;
 	recv(socket, &n, sizeof(n), 0);
 
 	printf("\n+ Sensors found: %d\n", n);
 	printf("+ %s:\n", location);
 
-	// recieve all the last readings
+	// receive all the last readings
 	for(int i = 0; i < n; i++){
 
 		// clear array
 		for(int j = 0; j < 3; j++)
 			memset(split[j], '\0', SENSOR_CHAR_LIMIT);
 
-		// recieve message
+		// receive message
 		recv(socket, buffer, BUFF_SIZE, 0);
 
 		strsplit(buffer, ';',  3, split);
@@ -156,7 +156,7 @@ void print_new(int socket){
 
 	int nbytes;
 
-	// recieve message data
+	// receive message data
 	nbytes = recv(socket, buffer, BUFF_SIZE, 0);
 
 	// crash proof
@@ -176,8 +176,7 @@ void print_new(int socket){
 Prints help menu.
 */
 void help(){
-	printf("\nTo list all the sensors connected to the broker with the
-		type X:\n");
+	printf("\nTo list all the sensors connected to the broker with the type X:\n");
 	printf("list X\n");
 	printf("\nTo get the last readings in location X:\n");
 	printf("last X\n");

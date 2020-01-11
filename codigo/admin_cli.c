@@ -22,7 +22,7 @@ void last_reading(int socket, char id[BUFF_SIZE]){
 
     memset(buffer, '\0', BUFF_SIZE);
 
-    // recieves last reading
+    // receives last reading
     recv(socket, buffer, BUFF_SIZE, 0);
 
 
@@ -59,7 +59,7 @@ void list_all_sensors(int socket){
     send(socket, buffer, BUFF_SIZE, 0);
 
 	int counter = 0;
-    // recieves number of sensors
+    // receives number of sensors
     recv(socket, &counter, sizeof(counter), 0);
 
 	printf("\nID\tTYPE\tLOCATION\tVERSION\n");
@@ -112,7 +112,7 @@ void update_sensor(int socket, char buffer[BUFF_SIZE]){
 	send(socket, buffer, BUFF_SIZE, 0);
 
 	int number;
-	// recieve result
+	// receive result
 	recv(socket, &number, sizeof(number), 0);
 
 	// print result
@@ -142,7 +142,7 @@ void disconnect(int socket, char id[SENSOR_CHAR_LIMIT]){
 	
 	memset(buffer, '\0', BUFF_SIZE);
 
-	// recieve result
+	// receive result
 	recv(socket, buffer, BUFF_SIZE, 0);
 
 	// print result
@@ -156,8 +156,7 @@ Prints help menu.
 void help(){
 	printf("\nTo get the last reading of a sensor with ID X:\n");
 	printf("last X\n");
-	printf("To list all the sensors information connected to the
-		broker:\n");
+	printf("To list all the sensors information connected to the broker:\n");
 	printf("list\n");
 	printf("To send updates to sensors of sensor type X:\n");
 	printf("update X Version\n");

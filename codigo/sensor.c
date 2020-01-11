@@ -28,7 +28,7 @@ void sensor_initialize(int sensor_socket, int update_socket,
 	strcat(buffer, ";");
 	strcat(buffer, this_sensor->version);
 
-	/ send message
+	// send message
 	send(sensor_socket, buffer, BUFF_SIZE, 0);
 
 	char accepted ='\0';
