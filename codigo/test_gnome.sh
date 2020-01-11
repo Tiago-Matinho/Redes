@@ -1,7 +1,7 @@
 gnome-terminal -e "bash -c \"./broker; exec bash\"" -T "Broker"
 #sensores
 gnome-terminal -e "bash -c \"./sensor 101 CO2 Lisboa 1.0; exec bash\"" -T "Sensor 101"
-gnome-terminal --tab -e "bash -c \"./sensor 01 Chuva Lisboa 1.0; exec bash\"" -T "Sensor 1"
+gnome-terminal --tab -e "bash -c \"./sensor 1 Chuva Lisboa 1.0; exec bash\"" -T "Sensor 1"
 gnome-terminal --tab  -e "bash -c \"./sensor 103 CO2 Évora 1.0; exec bash\"" -T "Sensor 103"
 gnome-terminal --tab -e "bash -c \"./sensor 99 CH4 Lisboa 1.0; exec bash\"" -T "Sensor 99"
 

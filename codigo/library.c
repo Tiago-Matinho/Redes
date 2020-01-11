@@ -259,21 +259,34 @@ struct sensor_node* sensor_arrays_remove(struct sensor_arrays* arrays,
 
     for(int i = 0; i < counter; i++){
 
-        if(strcmp(id, arrays->id[i]->sensor->id) == 0){
-            temp = arrays->id[i];
-            arrays->id[i] = arrays->id[counter - 1];
+        if(arrays->id[i] != NULL){
+            if(strcmp(id, arrays->id[i]->sensor->id) == 0){
+                temp = arrays->id[i];
+                arrays->id[i] = arrays->id[counter - 1];
+                arrays->id[counter - 1] = NULL;
+            }
         }
 
-        if(strcmp(id, arrays->location[i]->sensor->id) == 0)
-            arrays->location[i] = arrays->location[counter - 1];
+        if(arrays->location[i] != NULL){
+            if(strcmp(id, arrays->location[i]->sensor->id) == 0){
+                arrays->location[i] = arrays->location[counter - 1];
+                arrays->location[counter - 1] = NULL;
+            }
+        }
         
-
-        if(strcmp(id, arrays->type[i]->sensor->id) == 0)
-            arrays->type[i] = arrays->type[counter - 1];
+        if(arrays->type[i] != NULL){
+            if(strcmp(id, arrays->type[i]->sensor->id) == 0){
+                arrays->type[i] = arrays->type[counter - 1];
+                arrays->type[counter - 1] = NULL;
+            }
+        }
         
-
-        if(strcmp(id, arrays->version[i]->sensor->id) == 0)
-            arrays->version[i] = arrays->version[counter - 1];
+        if(arrays->version[i] != NULL){
+            if(strcmp(id, arrays->version[i]->sensor->id) == 0){
+                arrays->version[i] = arrays->version[counter - 1];
+                arrays->version[counter - 1] = NULL;
+            }
+        }
         
     }
 
@@ -282,10 +295,10 @@ struct sensor_node* sensor_arrays_remove(struct sensor_arrays* arrays,
     counter = arrays->sensor_counter;
 
     arrays->socket[temp->sensor_socket] = NULL;
-    mergeSort(arrays->id, 0, counter, 'I');
-    mergeSort(arrays->type, 0, counter, 'T');
-    mergeSort(arrays->location, 0, counter, 'L');
-    mergeSort(arrays->version, 0, counter, 'V');
+    mergeSort(arrays->id, 0, counter -1, 'I');
+    mergeSort(arrays->type, 0, counter -1, 'T');
+    mergeSort(arrays->location, 0, counter -1, 'L');
+    mergeSort(arrays->version, 0, counter -1, 'V');
 
     for(int j = 0; j < SENSOR_LOG_SIZE; j++)
         free(temp->log[j]);

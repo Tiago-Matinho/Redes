@@ -167,7 +167,8 @@ void print_new(int socket){
 	char split[5][SENSOR_CHAR_LIMIT];
 	strsplit(buffer, ';',  5, split);
 	printf("\nSUBSCRIBED UPDATE:");
-	printf("%s %s %s %s %s\n", split[0], split[1], split[2], split[3],
+	printf("\nID\tDATE\t\t\t\tTYPE\tVALUE\tVERSION\n");
+	printf("%s\t%s\t%s\t%s\t%s\n\n", split[0], split[1], split[2], split[3],
 		split[4]);
 }
 
@@ -180,8 +181,8 @@ void help(){
 	printf("list X\n");
 	printf("\nTo get the last readings in location X:\n");
 	printf("last X\n");
-	printf("To subscribe to location X:\n");
-	printf("subscribe X\n");
+	printf("\nTo subscribe to location X:\n");
+	printf("subscribe X\n\n");
 }
 
 

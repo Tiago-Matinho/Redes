@@ -116,7 +116,7 @@ void update_sensor(int socket, char buffer[BUFF_SIZE]){
 	recv(socket, &number, sizeof(number), 0);
 
 	// print result
-	printf("\n%d\n", number);
+	printf("\nUpdated: %d sensors.\n\n", number);
 }
 
 /*
@@ -146,7 +146,7 @@ void disconnect(int socket, char id[SENSOR_CHAR_LIMIT]){
 	recv(socket, buffer, BUFF_SIZE, 0);
 
 	// print result
-	printf("\n%s\n", buffer);
+	printf("\n%s\n\n", buffer);
 }
 
 
@@ -156,12 +156,12 @@ Prints help menu.
 void help(){
 	printf("\nTo get the last reading of a sensor with ID X:\n");
 	printf("last X\n");
-	printf("To list all the sensors information connected to the broker:\n");
+	printf("\nTo list all the sensors information connected to the broker:\n");
 	printf("list\n");
-	printf("To send updates to sensors of sensor type X:\n");
+	printf("\nTo send updates to sensors of sensor type X:\n");
 	printf("update X Version\n");
-	printf("To disconnect sensor with ID X:\n");
-	printf("disconnect X\n");
+	printf("\nTo disconnect sensor with ID X:\n");
+	printf("disconnect X\n\n");
 }
 
 
